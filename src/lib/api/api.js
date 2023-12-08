@@ -7,8 +7,8 @@ import storage from '$lib/stores/storage';
 // Create a instance of axios to use the same base url.
 const axiosAPI = axios.create({
 	// baseURL: BASE_URL
-	// baseURL: 'https://hifzworld.onrender.com/'
-	baseURL: 'http://localhost:3000/'
+	baseURL: 'https://hifzworld.onrender.com/'
+	// baseURL: 'http://localhost:3000/'
 });
 
 // let csrfToken;
