@@ -1,0 +1,565 @@
+<script>
+	import API from '$lib/api/api';
+	import { onMount, onDestroy } from 'svelte';
+	import thirteen_liner from '$lib/functions/thirteen_liner';
+	import { user } from '$lib/stores/user';
+
+	let imageSrc = null;
+	let canvas;
+	let context;
+	let isDrawing = false;
+	let undoStack = [];
+	let redoStack = [];
+	let debugMode = false;
+	let showPaths = true; // New variable to toggle path visibility
+	let drawnPaths = [];
+	let img; // Declare img as a global variable
+
+	// let highlightTransparency = 0.9; // Adjust the value as needed
+	// let highlightColor = `rgba(0, 0, 0, ${highlightTransparency})`;
+
+	let highlightTransparency = 0.3; // Adjust the value as needed
+	let highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`;
+
+	let pageNumber = Math.floor(Math.random() * (799 - 2 + 1)) + 2;
+
+	let touchId; // To track the touch ID for drawing
+	let touchPos; // To store the touch position
+	let clickStartY = null; // Variable to store the x-coordinate where the click started
+
+	onMount(() => {
+		getImageSrc();
+	});
+
+	onDestroy(() => {
+		closePage();
+	});
+
+	async function getImageSrc(page = pageNumber) {
+		const res = await API.get(`/mushafs/1/pages/${page}`);
+		imageSrc = res.image_url;
+		beginPage();
+	}
+
+	function beginPage() {
+		img = new Image();
+		img.src = imageSrc;
+
+		img.onload = () => {
+			canvas.width = img.width;
+			canvas.height = img.height;
+			context = canvas.getContext('2d');
+			context.drawImage(img, 0, 0, img.width, img.height);
+			saveToUndoStack();
+		};
+
+		// Setup the event listener when the component is mounted
+		if (typeof document !== 'undefined') {
+			// document.addEventListener('click', handleDebugClick);
+			canvas.addEventListener('touchstart', handleTouchStart);
+			canvas.addEventListener('touchmove', handleTouchMove);
+			canvas.addEventListener('touchend', handleTouchEnd);
+			adjustCanvasSize(); // Call the function to adjust canvas size on mount
+		}
+	}
+
+	function adjustCanvasSize() {
+		// Get the dimensions of the container div
+		const containerWidth = canvas.parentElement.clientWidth;
+		const containerHeight = canvas.parentElement.clientHeight;
+
+		// Set the canvas size to fit the container while maintaining the aspect ratio
+		const aspectRatio = img.width / img.height;
+		let newWidth, newHeight;
+
+		if (containerWidth / aspectRatio < containerHeight) {
+			newWidth = containerWidth;
+			newHeight = containerWidth / aspectRatio;
+		} else {
+			newWidth = containerHeight * aspectRatio;
+			newHeight = containerHeight;
+		}
+
+		canvas.width = newWidth;
+		canvas.height = newHeight;
+		redrawCanvas(); // Redraw the canvas after adjusting the size
+	}
+
+	function closePage() {
+		if (typeof document !== 'undefined') {
+			// document.removeEventListener('click', handleDebugClick);
+			canvas.removeEventListener('touchstart', handleTouchStart);
+			canvas.removeEventListener('touchmove', handleTouchMove);
+			canvas.removeEventListener('touchend', handleTouchEnd);
+		}
+		drawnPaths = [];
+	}
+
+	function handleTouchStart(event) {
+		event.preventDefault();
+		const touch = event.touches[0];
+
+		touchId = touch.identifier;
+		touchPos = getTouchPos(touch);
+		handleBrushStart(touchPos);
+	}
+
+	function handleTouchMove(event) {
+		event.preventDefault();
+		const touch = getTouchById(event, touchId);
+		if (touch) {
+			touchPos = getTouchPos(touch);
+			handleBrushMove(touchPos);
+		}
+	}
+
+	function handleTouchEnd(event) {
+		const touch = getTouchById(event, touchId);
+		if (touch) {
+			if (isDrawing) {
+				// If drawing, save the path
+				isDrawing = false;
+				saveToUndoStack();
+			}
+		}
+	}
+
+	function getTouchPos(touch) {
+		const rect = canvas.getBoundingClientRect();
+		const scaleX = canvas.width / rect.width;
+		const scaleY = canvas.height / rect.height;
+
+		const x_sanitize = (touch.clientX - rect.left) * scaleX + window.scrollX;
+		const y_sanitize = (touch.clientY - rect.top) * scaleY + window.scrollY;
+
+		return {
+			x: Math.round(x_sanitize),
+			y: Math.round(y_sanitize)
+		};
+	}
+
+	function getTouchById(event, id) {
+		for (let i = 0; i < event.changedTouches.length; i++) {
+			if (event.changedTouches[i].identifier === id) {
+				return event.changedTouches[i];
+			}
+		}
+		return null;
+	}
+
+	async function getPage() {
+		closePage();
+		getImageSrc(pageNumber);
+	}
+
+	function getMousePos(event) {
+		const rect = canvas.getBoundingClientRect();
+
+		const x_sanitize = event.clientX - rect.left;
+		const y_sanitize = event.clientY - rect.top;
+
+		return {
+			x: Math.round(x_sanitize),
+			y: Math.round(y_sanitize)
+		};
+	}
+
+	function saveToUndoStack() {
+		// undoStack.push(context.getImageData(0, 0, canvas.width, canvas.height));
+		// redoStack = [];
+	}
+
+	function handleBrushStart(pos) {
+		// console.log({ positionExists });
+		clickStartY = pos.y;
+		console.log('startY', pos.y);
+		drawnPaths.push([{ x: pos.x, y: pos.y, color: highlightColor }]); // Default color is yellow
+	}
+
+	function handleBrushMove(pos) {
+		// Check if the specified position exists in drawnPaths
+		const positionExists = doesPosExistInDrawnPaths(pos);
+		console.log(pos);
+
+		// If debugMode is enabled and the position exists, log the message and return
+		if (debugMode) {
+			if (positionExists) {
+				console.log('Position exists in drawnPaths:', pos);
+				removePointFromDrawnPaths(pos);
+			}
+
+			return;
+		}
+
+		// If the position doesn't exist, push the new position to drawnPaths
+		drawnPaths[drawnPaths.length - 1].push({
+			x: pos.x,
+			y: clickStartY,
+			color: highlightColor
+		});
+
+		redrawCanvas();
+	}
+
+	function handleMouseDown(event) {
+		isDrawing = true;
+		const pos = getMousePos(event);
+		handleBrushStart(pos);
+	}
+
+	function handleMouseMove(event) {
+		if (!isDrawing) return;
+		const pos = getMousePos(event);
+		handleBrushMove(pos);
+	}
+
+	// Function to check if the specified position exists in drawnPaths
+	function doesPosExistInDrawnPaths(pos) {
+		const coordinates = getAllCoordinates(drawnPaths);
+
+		// Define the range of points to check in all directions
+		const range = 30;
+
+		for (const point of coordinates) {
+			for (let i = -range; i <= range; i++) {
+				for (let j = -range; j <= range; j++) {
+					// Check if the current point is within the specified range around the target position
+					if (point.x === pos.x + i && point.y === pos.y + j) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+	function removePointFromDrawnPaths(pos) {
+		const x = pos.x;
+		const y = pos.y;
+		const radius = 20; // Number of points to remove in each direction
+
+		// Create a new array without the points to be removed
+		const newDrawnPaths = drawnPaths.map((path) =>
+			path.filter(
+				(point) =>
+					point.x < x - radius ||
+					point.x > x + radius ||
+					point.y < y - radius ||
+					point.y > y + radius
+			)
+		);
+
+		// Update the drawnPaths variable with the new array
+
+		drawnPaths = newDrawnPaths;
+		console.log(drawnPaths.map((p) => p.length));
+
+		redrawCanvas();
+	}
+
+	function handleMouseUp() {
+		if (isDrawing) {
+			isDrawing = false;
+			saveToUndoStack();
+		}
+	}
+
+	function undo() {
+		if (undoStack.length > 1) {
+			redoStack.push(undoStack.pop());
+			context.putImageData(undoStack[undoStack.length - 1], 0, 0);
+			if (!debugMode) {
+				drawnPaths.pop(); // Remove the last drawn path when undoing
+			}
+		}
+	}
+
+	function redo() {
+		if (redoStack.length > 0) {
+			undoStack.push(redoStack.pop());
+			context.putImageData(undoStack[undoStack.length - 1], 0, 0);
+			if (!debugMode) {
+				// Save the current path to the array
+				drawnPaths.push([]);
+			}
+		}
+	}
+
+	function toggleDebugMode() {
+		debugMode = !debugMode;
+		if (debugMode) {
+			document.addEventListener('click', handleDebugClick);
+		} else {
+			document.removeEventListener('click', handleDebugClick);
+		}
+	}
+
+	let clickedIndex = -1; // Initialize clickedIndex
+
+	function getClickedPathIndex(mousePos) {
+		let clickThreshold = 10; // Adjust the threshold as needed
+
+		for (let i = 0; i < drawnPaths.length; i++) {
+			const path = drawnPaths[i];
+			for (let j = 0; j < path.length - 1; j++) {
+				const start = path[j];
+				const end = path[j + 1];
+
+				// Calculate the distance from the mouse to the line segment defined by start and end points
+				const distToSegment = getDistanceToSegment(mousePos, start, end);
+
+				if (distToSegment < clickThreshold) {
+					console.log('Clicked on drawn path:', i);
+					return i;
+				}
+			}
+		}
+
+		console.log('No path found');
+		return -1;
+	}
+
+	// Function to calculate the distance from a point to a line segment
+	function getDistanceToSegment(point, start, end) {
+		const dx = end.x - start.x;
+		const dy = end.y - start.y;
+		const dotProduct =
+			((point.x - start.x) * dx + (point.y - start.y) * dy) /
+			Math.pow(getLength({ x: dx, y: dy }), 2);
+
+		const closestX = start.x + dotProduct * dx;
+		const closestY = start.y + dotProduct * dy;
+
+		if (dotProduct < 0) {
+			return getDistance(point, start); // Closest point is the start of the segment
+		} else if (dotProduct > 1) {
+			return getDistance(point, end); // Closest point is the end of the segment
+		}
+
+		return getDistance(point, { x: closestX, y: closestY });
+	}
+
+	// Function to calculate the Euclidean distance between two points
+	function getDistance(point1, point2) {
+		const dx = point2.x - point1.x;
+		const dy = point2.y - point1.y;
+		return Math.sqrt(dx * dx + dy * dy);
+	}
+
+	// Function to calculate the length of a vector
+	function getLength(vector) {
+		return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+	}
+
+	function handleDebugClick(event) {
+		return;
+		if (!debugMode) return;
+
+		event.preventDefault(); // Prevent the default click behavior
+
+		// Use the appropriate event coordinates based on the event type
+		const pos = event.type === 'click' ? getMousePos(event) : getTouchPos(event.changedTouches[0]);
+		clickedIndex = getClickedPathIndex(pos);
+
+		if (clickedIndex !== -1) {
+			console.log('Clicked on drawn path:', drawnPaths[clickedIndex]);
+			// Remove the clicked path
+			drawnPaths.splice(clickedIndex, 1);
+			redrawCanvas();
+		}
+	}
+
+	function findIntersectingPoints(pathIndex, mousePos) {
+		const clickThreshold = 10; // Adjust the threshold as needed
+		const intersectingPoints = [];
+
+		const path = drawnPaths[pathIndex];
+		for (let j = 0; j < path.length - 1; j++) {
+			const start = path[j];
+			const end = path[j + 1];
+
+			// Calculate the distance from the mouse to the line segment defined by start and end points
+			const distToSegment = getDistanceToSegment(mousePos, start, end);
+
+			if (distToSegment < clickThreshold) {
+				// If the distance is below the threshold, consider it as an intersecting point
+				intersectingPoints.push(path[j], path[j + 1]);
+			}
+		}
+
+		return intersectingPoints;
+	}
+
+	function redrawCanvas() {
+		context.clearRect(0, 0, canvas.width, canvas.height);
+		context.drawImage(img, 0, 0, img.width, img.height);
+
+		// Draw paths only if showPaths is true
+		if (showPaths) {
+			drawnPaths.forEach((path) => {
+				if (path.length > 1) {
+					context.beginPath();
+					context.moveTo(path[0].x, path[0].y);
+					path.forEach((point) => {
+						context.lineTo(point.x, point.y);
+						context.strokeStyle = point.color;
+						// context.globalAlpha = highlightTransparency;
+					});
+					context.lineWidth = 38;
+					context.lineCap = 'round';
+					context.lineJoin = 'round';
+					context.stroke();
+				}
+			});
+		}
+	}
+
+	function saveDrawingToDatabase() {
+		// Now, you can save `drawingData` to your database
+		console.log({
+			paths: drawnPaths,
+			page_number: parseInt(pageNumber),
+			user_id: $user.id
+		});
+
+		console.log(getAllCoordinates(drawnPaths));
+	}
+
+	function getAllCoordinates(data) {
+		const coordinates = [];
+
+		// Iterate through the nested array
+		data.forEach((innerArray) => {
+			innerArray.forEach((obj) => {
+				// Extract and push x and y coordinates
+				coordinates.push({ x: obj.x, y: obj.y });
+			});
+		});
+
+		return coordinates;
+	}
+</script>
+
+<div class="canvas-container">
+	<canvas
+		bind:this={canvas}
+		on:mousedown={handleMouseDown}
+		on:mousemove={handleMouseMove}
+		on:mouseup={handleMouseUp}
+	/>
+</div>
+
+<div class="controls">
+	<br />
+	<!-- <button on:click={undo}>Undo</button>
+        <button on:click={redo}>Redo</button> -->
+	<button on:click={toggleDebugMode} class="btn {debugMode ? 'btn-warning' : 'btn-success'}"
+		><i class="fa {debugMode ? 'fa-eraser' : 'fa-pen'}" /></button
+	>
+	<button
+		on:click={() => {
+			showPaths = !showPaths;
+			redrawCanvas();
+		}}
+		class="btn"><i class="fa {showPaths ? 'fa-eye' : 'fa-eye-slash'}" /></button
+	>
+
+	<input
+		type="number"
+		class="form-control text-center"
+		bind:value={pageNumber}
+		on:change={getPage}
+	/>
+	<div class="movePage flex">
+		<span
+			class="btn btn-info"
+			on:click={() => {
+				pageNumber = pageNumber + 1;
+				getPage();
+			}}><i class="fa fa-arrow-left" /></span
+		>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<span
+			class="btn btn-info"
+			on:click={() => {
+				if (pageNumber < 3) return;
+				pageNumber = pageNumber - 1;
+				getPage();
+			}}><i class="fa fa-arrow-right" /></span
+		>
+	</div>
+	<div class="colors">
+		<div
+			class="yellow"
+			on:click={() => (highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`)}
+		/>
+		<!-- <div class="black" on:click={() => (highlightColor = `rgba(52, 73, 94,1.0)`)} /> -->
+		<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
+	</div>
+
+	<button on:click={saveDrawingToDatabase}>Save Page</button>
+
+	<br />
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+</div>
+
+<style>
+	/* canvas {
+		border: 1px solid #000;
+	} */
+
+	.canvas-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: auto; /* Set the height of the parent div to the full viewport height */
+		margin: 0; /* Remove default margin to avoid unnecessary spacing */
+	}
+
+	canvas {
+		border: 1px solid #000;
+		max-width: 100%; /* Ensure the canvas doesn't exceed the container's width */
+		max-height: 100%; /* Ensure the canvas doesn't exceed the container's height */
+	}
+
+	.colors {
+		display: block;
+		text-align: center;
+		margin: 10px;
+	}
+
+	.colors div {
+		border: 1px solid black;
+		width: 40px;
+		height: 40px;
+		display: inline-block;
+	}
+
+	.colors .black {
+		background-color: #000;
+	}
+
+	.colors .yellow {
+		background-color: yellow;
+	}
+
+	.flex {
+		display: flex;
+	}
+
+	.movePage > span {
+		flex: 1 1 50%;
+		font-size: 34px;
+		margin: 10px;
+	}
+
+	.controls {
+		text-align: center;
+	}
+
+	.controls input {
+		margin-top: 10px;
+		font-size: 40px;
+	}
+</style>
