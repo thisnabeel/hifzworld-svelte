@@ -7,7 +7,6 @@
 	let password;
 	let confirmPassword;
 
-
 	$: console.log(email);
 
 	const authenticate = async (verb) => {
@@ -21,11 +20,9 @@
 
 		if (verb === 'signUp') {
 			response = await Api.post('/users/sign_up', {
-				user: {
-					email: email,
-					password: password,
-					password_confirmation: confirmPassword
-				}
+				email: email,
+				password: password,
+				password_confirmation: confirmPassword
 			});
 		}
 		console.log(response);
@@ -67,7 +64,6 @@
 
 		<label>Email:</label>
 		<input type="text" bind:value={email} />
-
 
 		<label>Password:</label>
 		<input type="password" bind:value={password} />
