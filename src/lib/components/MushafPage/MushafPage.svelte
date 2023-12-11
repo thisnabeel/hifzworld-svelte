@@ -42,7 +42,8 @@
 
 	async function getImageSrc() {
 		page = await API.get(`/mushafs/1/pages/${pageNumber}`);
-		imageSrc = page.image_url;
+		console.log({ page });
+		imageSrc = page.image_s3_url;
 		beginPage();
 	}
 
