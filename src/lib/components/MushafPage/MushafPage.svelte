@@ -22,7 +22,7 @@
 	let highlightTransparency = 0.3; // Adjust the value as needed
 	let highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`;
 
-	let pageNumber = Math.floor(Math.random() * (799 - 2 + 1)) + 2;
+	export let pageNumber;
 
 	let touchId; // To track the touch ID for drawing
 	let touchPos; // To store the touch position
@@ -32,13 +32,18 @@
 
 	onMount(() => {
 		if ($user) {
-			getImageSrc();
+			// getImageSrc();
+			if (pageNumber) {
+				getPage();
+			}
 		}
 	});
 
 	onDestroy(() => {
 		closePage();
 	});
+
+	$: getPage(pageNumber);
 
 	async function getImageSrc() {
 		page = await API.get(`/mushafs/1/pages/${pageNumber}`);
@@ -71,9 +76,8 @@
 			context = canvas.getContext('2d');
 			context.drawImage(img, 0, 0, img.width, img.height);
 			saveToUndoStack();
+			fetchUserPage();
 		};
-
-		fetchUserPage();
 
 		// Setup the event listener when the component is mounted
 		if (typeof document !== 'undefined') {
@@ -169,7 +173,7 @@
 		return null;
 	}
 
-	async function getPage() {
+	async function getPage(trigger) {
 		closePage();
 		getImageSrc(pageNumber);
 	}
