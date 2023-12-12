@@ -10,7 +10,8 @@
 			email: email
 		});
 		console.log({ res });
-		alert('Thanks for Subscribing!', email);
+		alert('Thanks for Subscribing!');
+		email = '';
 	};
 </script>
 
@@ -38,15 +39,14 @@
 		<li>Track the Health of their Hifz</li>
 	</ul>
 
-	<h1>Coming Soon</h1>
-	<!-- <p>
+	<p>
 		We are launching real soon, sign up to get notified. <br />It helps us also to know how many
 		people are interested.
 	</p>
 
 	<input bind:value={email} type="text" placeholder="Enter Email Here..." />
 
-	<div on:click={submitForm} class="btn btn-outline-primary btn-block">Submit</div> -->
+	<div on:click={submitForm} class="btn btn-outline-primary btn-block">Submit</div>
 
 	<br /><br />
 	<h3>Wasalams</h3>
