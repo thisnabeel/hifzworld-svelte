@@ -20,14 +20,16 @@
 			<!-- <li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
 				<a href="/">Home</a>
 			</li> -->
-			<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
-				<a href="/about">About</a>
-			</li>
-
-			{#if $user}
-				<li>
-					<a href="#" on:click={() => user.set(null)}>Sign Out</a>
+			{#if false}
+				<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
+					<a href="/about">About</a>
 				</li>
+
+				{#if $user}
+					<li>
+						<a href="#" on:click={() => user.set(null)}>Sign Out</a>
+					</li>
+				{/if}
 			{/if}
 		</ul>
 		<svg viewBox="0 0 2 3" aria-hidden="true">

@@ -4,16 +4,17 @@
 
 	import Creds from '$lib/components/Creds/Creds.svelte';
 	import { user } from '$lib/stores/user';
-
-	user.subscribe(user => console.log(user))
+	import Landing from '$lib/components/Landing/Index.svelte';
+	user.subscribe((user) => console.log(user));
 </script>
 
 <div class="app">
-	
 	<Header />
 
 	<main>
-		{#if !$user}
+		{#if true}
+			<Landing />
+		{:else if !$user}
 			<Creds />
 		{:else}
 			<slot />
@@ -21,7 +22,7 @@
 	</main>
 
 	<footer>
-		<p>visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to learn SvelteKit</p>
+		<!-- <p>visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to learn SvelteKit</p> -->
 	</footer>
 </div>
 

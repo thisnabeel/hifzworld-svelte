@@ -89,12 +89,6 @@
 		border: 9px solid #f6f8ff;
 	}
 
-	img.creds-header-img {
-		margin: 10px auto;
-		display: block;
-		width: 100%;
-	}
-
 	input {
 		width: 100%;
 		font-family: GreyCliffCF-Regular;
@@ -124,5 +118,11 @@
 		margin-top: 30px;
 		display: block;
 		max-width: 200px;
+	}
+
+	img.creds-header-img {
+		margin: 10px auto;
+		display: block;
+		width: 100%;
 	}
 </style>
