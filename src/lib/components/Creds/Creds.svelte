@@ -9,6 +9,12 @@
 
 	$: console.log(email);
 
+	$: {
+		if ($user) {
+			goto(`/`);
+		}
+	}
+
 	const authenticate = async (verb) => {
 		let response;
 		if (verb === 'signIn') {
@@ -28,6 +34,7 @@
 		console.log(response);
 		if (response['id']) {
 			user.set(response);
+			// goto(`/`);
 			// if (hidePopUp) {
 			// 	hidePopUp();
 			// }

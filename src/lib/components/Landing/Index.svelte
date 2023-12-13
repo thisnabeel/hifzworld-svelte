@@ -1,4 +1,5 @@
 <script>
+	import { goto } from '$app/navigation';
 	import API from '$lib/api/api';
 
 	let email = '';
@@ -50,7 +51,7 @@
 
 	<br /><br />
 	<h3>Wasalams</h3>
-	<h3>- Nabeel from Fremont, CA</h3>
+	<h3>- <span on:click={() => goto('/users/sign_in')}>Nabeel</span> from Fremont, CA</h3>
 </div>
 
 <style>

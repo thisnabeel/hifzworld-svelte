@@ -12,13 +12,7 @@
 	<Header />
 
 	<main>
-		{#if true}
-			<Landing />
-		{:else if !$user}
-			<Creds />
-		{:else}
-			<slot />
-		{/if}
+		<slot />
 	</main>
 
 	<footer>

@@ -2,7 +2,7 @@
 	import MushafPage from '$lib/components/MushafPage/MushafPage.svelte';
 	import Toc from '$lib/components/Toc/Toc.svelte';
 	import { user } from '$lib/stores/user';
-
+	import Landing from '$lib/components/Landing/Index.svelte';
 	let showToc = false;
 	// Math.floor(Math.random() * (799 - 2 + 1)) + 2;
 	let pageNumber = 2;
@@ -21,20 +21,25 @@
 	}
 </script>
 
-<MushafPage {pageNumber} />
+{#if !$user}
+	<!-- <Creds /> -->
+	<Landing />
+{:else}
+	<MushafPage {pageNumber} />
 
-{#if $user}
-	<i
-		class="fa fa-bars open-toc"
-		on:click={() => {
-			showToc = true;
-			tocDisabled = false;
-		}}
-	/>
-{/if}
+	{#if $user}
+		<i
+			class="fa fa-bars open-toc"
+			on:click={() => {
+				showToc = true;
+				tocDisabled = false;
+			}}
+		/>
+	{/if}
 
-{#if showToc}
-	<Toc selectPage={handleSelectPage} {tocDisabled} />
+	{#if showToc}
+		<Toc selectPage={handleSelectPage} {tocDisabled} />
+	{/if}
 {/if}
 
 <style>
