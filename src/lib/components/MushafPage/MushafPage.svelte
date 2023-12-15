@@ -22,6 +22,8 @@
 	let highlightTransparency = 0.3; // Adjust the value as needed
 	let highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`;
 
+	let saving = -1;
+
 	export let pageNumber;
 
 	let touchId; // To track the touch ID for drawing
@@ -61,6 +63,7 @@
 				drawnPaths = user_page.drawn_paths;
 				redrawCanvas();
 			}
+			saving = 1;
 		} else {
 			console.log('not found');
 		}
@@ -156,7 +159,7 @@
 		const scaleY = canvas.height / rect.height;
 
 		let scrollPosition = 0;
-		console.log({ scrollPosition });
+		// console.log({ scrollPosition });
 		if (window.innerWidth < 768) {
 			scrollPosition = window.scrollY;
 		}
@@ -204,19 +207,19 @@
 	function handleBrushStart(pos) {
 		// console.log({ positionExists });
 		clickStartY = pos.y;
-		console.log('startY', pos.y);
+		// console.log('startY', pos.y);
 		drawnPaths.push([{ x: pos.x, y: pos.y, color: highlightColor }]); // Default color is yellow
 	}
 
 	function handleBrushMove(pos) {
 		// Check if the specified position exists in drawnPaths
 		const positionExists = doesPosExistInDrawnPaths(pos);
-		console.log(pos);
+		// console.log(pos);
 
 		// If debugMode is enabled and the position exists, log the message and return
 		if (debugMode) {
 			if (positionExists) {
-				console.log('Position exists in drawnPaths:', pos);
+				// console.log('Position exists in drawnPaths:', pos);
 				removePointFromDrawnPaths(pos);
 			}
 
@@ -229,7 +232,7 @@
 			y: clickStartY,
 			color: highlightColor
 		});
-
+		saving = -1;
 		redrawCanvas();
 	}
 
@@ -285,7 +288,7 @@
 		// Update the drawnPaths variable with the new array
 
 		drawnPaths = newDrawnPaths;
-		console.log(drawnPaths.map((p) => p.length));
+		// console.log(drawnPaths.map((p) => p.length));
 
 		redrawCanvas();
 	}
@@ -342,13 +345,13 @@
 				const distToSegment = getDistanceToSegment(mousePos, start, end);
 
 				if (distToSegment < clickThreshold) {
-					console.log('Clicked on drawn path:', i);
+					// console.log('Clicked on drawn path:', i);
 					return i;
 				}
 			}
 		}
 
-		console.log('No path found');
+		// console.log('No path found');
 		return -1;
 	}
 
@@ -478,18 +481,25 @@
 			// Step 5: Reset the global composite operation to the default
 			context.globalCompositeOperation = 'source-over';
 		}
+
+		// console.log({ drawnPaths });
 	}
 	async function saveDrawingToDatabase() {
 		// Now, you can save `drawingData` to your database
 		// console.log();
+		saving = 0;
+		const drawn_payload = drawnPaths.filter((a) => a.length > 0);
+
 		const hash = {
-			drawn_paths: drawnPaths,
+			drawn_paths: drawn_payload.length > 0 ? drawn_payload : null,
 			mushaf_page_id: page.id,
 			user_id: $user.id
 		};
 
 		const res = await API.post(`user_pages`, hash);
 		console.log({ res });
+		saving = 1;
+
 		// console.log(getAllCoordinates());
 		// const bounds = canvas.getBoundingClientRect();
 		// console.log({ bounds });
@@ -586,7 +596,21 @@
 		<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
 	</div>
 
-	<button on:click={saveDrawingToDatabase}>Save Page</button>
+	<button
+		class="btn btn-outline-info save-page"
+		class:btn-warning={saving == -1}
+		class:btn-info={saving == 0}
+		class:btn-success={saving == 1}
+		on:click={saveDrawingToDatabase}
+	>
+		{#if saving === -1}
+			Unsaved
+		{:else if saving === 0}
+			Saving
+		{:else if saving === 1}
+			Saved
+		{/if}
+	</button>
 
 	<br />
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -649,5 +673,12 @@
 	.controls input {
 		margin-top: 10px;
 		font-size: 40px;
+	}
+
+	.save-page {
+		position: fixed;
+		bottom: 10px;
+		right: 10px;
+		z-index: 9999;
 	}
 </style>
