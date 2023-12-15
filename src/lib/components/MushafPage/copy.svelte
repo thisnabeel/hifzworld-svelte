@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import thirteen_liner from '$lib/functions/thirteen_liner';
 	import { user } from '$lib/stores/user';
+	import save from '$lib/functions/debounce';
 
 	let imageSrc = null;
 	let canvas;
@@ -14,31 +15,55 @@
 	let showPaths = true; // New variable to toggle path visibility
 	let drawnPaths = [];
 	let img; // Declare img as a global variable
-
+	let inverted = false;
 	// let highlightTransparency = 0.9; // Adjust the value as needed
 	// let highlightColor = `rgba(0, 0, 0, ${highlightTransparency})`;
 
 	let highlightTransparency = 0.3; // Adjust the value as needed
 	let highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`;
 
-	let pageNumber = Math.floor(Math.random() * (799 - 2 + 1)) + 2;
+	export let pageNumber;
 
 	let touchId; // To track the touch ID for drawing
 	let touchPos; // To store the touch position
 	let clickStartY = null; // Variable to store the x-coordinate where the click started
 
+	let page;
+
 	onMount(() => {
-		getImageSrc();
+		if ($user) {
+			// getImageSrc();
+			if (pageNumber) {
+				getPage();
+			}
+		}
 	});
 
 	onDestroy(() => {
 		closePage();
 	});
 
-	async function getImageSrc(page = pageNumber) {
-		const res = await API.get(`/mushafs/1/pages/${page}`);
-		imageSrc = res.image_url;
+	$: getPage(pageNumber);
+
+	async function getImageSrc() {
+		page = await API.get(`/mushafs/1/pages/${pageNumber}`);
+		console.log({ page });
+		imageSrc = page.image_s3_url;
 		beginPage();
+	}
+
+	async function fetchUserPage() {
+		console.log('FETCHING USER');
+		const user_page = await API.get(`/users/${$user.id}/pages/${page.id}`);
+		if (user_page) {
+			console.log({ user_page });
+			if (user_page.drawn_paths) {
+				drawnPaths = user_page.drawn_paths;
+				redrawCanvas();
+			}
+		} else {
+			console.log('not found');
+		}
 	}
 
 	function beginPage() {
@@ -51,6 +76,7 @@
 			context = canvas.getContext('2d');
 			context.drawImage(img, 0, 0, img.width, img.height);
 			saveToUndoStack();
+			fetchUserPage();
 		};
 
 		// Setup the event listener when the component is mounted
@@ -129,8 +155,14 @@
 		const scaleX = canvas.width / rect.width;
 		const scaleY = canvas.height / rect.height;
 
-		const x_sanitize = (touch.clientX - rect.left) * scaleX + window.scrollX;
-		const y_sanitize = (touch.clientY - rect.top) * scaleY + window.scrollY;
+		let scrollPosition = 0;
+		console.log({ scrollPosition });
+		if (window.innerWidth < 768) {
+			scrollPosition = window.scrollY;
+		}
+		// Use `pageX` and `pageY` to get the absolute coordinates on the page
+		const x_sanitize = (touch.pageX - rect.left) * scaleX;
+		const y_sanitize = (touch.pageY - rect.top - scrollPosition) * scaleY;
 
 		return {
 			x: Math.round(x_sanitize),
@@ -147,7 +179,7 @@
 		return null;
 	}
 
-	async function getPage() {
+	async function getPage(trigger) {
 		closePage();
 		getImageSrc(pageNumber);
 	}
@@ -396,7 +428,7 @@
 		context.drawImage(img, 0, 0, img.width, img.height);
 
 		// Draw paths only if showPaths is true
-		if (showPaths) {
+		if (!inverted) {
 			drawnPaths.forEach((path) => {
 				if (path.length > 1) {
 					context.beginPath();
@@ -404,7 +436,6 @@
 					path.forEach((point) => {
 						context.lineTo(point.x, point.y);
 						context.strokeStyle = point.color;
-						// context.globalAlpha = highlightTransparency;
 					});
 					context.lineWidth = 38;
 					context.lineCap = 'round';
@@ -413,24 +444,62 @@
 				}
 			});
 		}
-	}
 
-	function saveDrawingToDatabase() {
+		if (inverted) {
+			const maskCanvas = document.createElement('canvas');
+			const maskContext = maskCanvas.getContext('2d');
+
+			// Set the dimensions of the mask canvas
+			maskCanvas.width = img.width;
+			maskCanvas.height = img.height;
+
+			// Step 2: Draw the inverted paths on the masking layer
+			maskContext.lineWidth = 38;
+			maskContext.lineCap = 'round';
+			maskContext.lineJoin = 'round';
+
+			drawnPaths.forEach((path) => {
+				if (path.length > 1) {
+					maskContext.beginPath();
+					maskContext.moveTo(path[0].x, path[0].y);
+					path.forEach((point) => {
+						maskContext.lineTo(point.x, point.y);
+					});
+					maskContext.stroke();
+				}
+			});
+
+			// Step 3: Set the global composite operation to "destination-out"
+			context.globalCompositeOperation = 'destination-in';
+
+			// Step 4: Draw the masking layer on the main canvas
+			context.drawImage(maskCanvas, 0, 0);
+
+			// Step 5: Reset the global composite operation to the default
+			context.globalCompositeOperation = 'source-over';
+		}
+	}
+	async function saveDrawingToDatabase() {
 		// Now, you can save `drawingData` to your database
-		console.log({
-			paths: drawnPaths,
-			page_number: parseInt(pageNumber),
+		// console.log();
+		const hash = {
+			drawn_paths: drawnPaths,
+			mushaf_page_id: page.id,
 			user_id: $user.id
-		});
+		};
 
-		console.log(getAllCoordinates(drawnPaths));
+		const res = await API.post(`user_pages`, hash);
+		console.log({ res });
+		// console.log(getAllCoordinates());
+		// const bounds = canvas.getBoundingClientRect();
+		// console.log({ bounds });
 	}
 
-	function getAllCoordinates(data) {
+	function getAllCoordinates() {
 		const coordinates = [];
 
 		// Iterate through the nested array
-		data.forEach((innerArray) => {
+		drawnPaths.forEach((innerArray) => {
 			innerArray.forEach((obj) => {
 				// Extract and push x and y coordinates
 				coordinates.push({ x: obj.x, y: obj.y });
@@ -438,6 +507,16 @@
 		});
 
 		return coordinates;
+	}
+
+	function generatePoints(xMax, yMax) {
+		const points = [];
+		for (let x = 0; x <= xMax; x++) {
+			for (let y = 0; y <= yMax; y++) {
+				points.push({ x, y });
+			}
+		}
+		return points;
 	}
 </script>
 
@@ -457,12 +536,21 @@
 	<button on:click={toggleDebugMode} class="btn {debugMode ? 'btn-warning' : 'btn-success'}"
 		><i class="fa {debugMode ? 'fa-eraser' : 'fa-pen'}" /></button
 	>
-	<button
+	<!-- <button
 		on:click={() => {
 			showPaths = !showPaths;
 			redrawCanvas();
 		}}
 		class="btn"><i class="fa {showPaths ? 'fa-eye' : 'fa-eye-slash'}" /></button
+	> -->
+
+	<button
+		on:click={() => {
+			inverted = !inverted;
+			console.log({ inverted });
+			redrawCanvas();
+		}}
+		class="btn">Invert</button
 	>
 
 	<input
