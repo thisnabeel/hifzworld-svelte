@@ -155,8 +155,14 @@
 		const scaleX = canvas.width / rect.width;
 		const scaleY = canvas.height / rect.height;
 
-		const x_sanitize = (touch.clientX - rect.left) * scaleX + window.scrollX;
-		const y_sanitize = (touch.clientY - rect.top) * scaleY + window.scrollY;
+		let scrollPosition = 0;
+		console.log({ scrollPosition });
+		if (window.innerWidth < 768) {
+			scrollPosition = window.scrollY;
+		}
+		// Use `pageX` and `pageY` to get the absolute coordinates on the page
+		const x_sanitize = (touch.pageX - rect.left) * scaleX;
+		const y_sanitize = (touch.pageY - rect.top - scrollPosition) * scaleY;
 
 		return {
 			x: Math.round(x_sanitize),
