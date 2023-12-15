@@ -3,7 +3,9 @@
 	import Toc from '$lib/components/Toc/Toc.svelte';
 	import { user } from '$lib/stores/user';
 	import Landing from '$lib/components/Landing/Index.svelte';
+	import Aside from '$lib/components/UserProgress/Aside.svelte';
 	let showToc = false;
+	let showProgressNav = false;
 	// Math.floor(Math.random() * (799 - 2 + 1)) + 2;
 	let pageNumber = 2;
 	let tocDisabled = false;
@@ -35,6 +37,18 @@
 				tocDisabled = false;
 			}}
 		/>
+
+		<i
+			class="fa fa-bars progress-nav"
+			on:click={() => {
+				showProgressNav = true;
+				tocDisabled = false;
+			}}
+		/>
+	{/if}
+
+	{#if showProgressNav}
+		<Aside selectPage={handleSelectPage} {tocDisabled} close={() => (showProgressNav = false)} />
 	{/if}
 
 	{#if showToc}
@@ -43,10 +57,19 @@
 {/if}
 
 <style>
-	.open-toc {
+	.open-toc,
+	.progress-nav {
 		position: fixed;
 		top: 10px;
-		right: 10px;
+
 		font-size: 40px;
+	}
+
+	.open-toc {
+		right: 10px;
+	}
+
+	.progress-nav {
+		left: 10px;
 	}
 </style>
