@@ -492,11 +492,11 @@
 
 		const hash = {
 			drawn_paths: drawn_payload.length > 0 ? drawn_payload : null,
-			mushaf_page_id: page.id,
-			user_id: $user.id
+			mushaf_page: page.id,
+			user: $user.id
 		};
 
-		const res = await API.post(`user_pages`, hash);
+		const res = await API.post(`/user_pages`, hash);
 		console.log({ res });
 		saving = 1;
 

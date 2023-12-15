@@ -21,7 +21,12 @@
 	<div class="close" on:click={close}><i class="fa fa-times" /></div>
 	<h1>My Progress</h1>
 	{#each segments as segment}
-		<li on:click={() => selectPage(segment.mushaf_page)}>
+		<li
+			on:click={() => {
+				selectPage(segment.mushaf_page);
+				close();
+			}}
+		>
 			<div style="direction:ltr">
 				{segment.percentage}% <span style="direction:rtl">{segment.title}</span>
 			</div>
