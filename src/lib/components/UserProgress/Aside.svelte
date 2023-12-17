@@ -23,12 +23,13 @@
 	{#each segments as segment}
 		<li
 			on:click={() => {
-				selectPage(segment.mushaf_page);
+				selectPage(segment.page_number);
 				close();
 			}}
 		>
 			<div style="direction:ltr">
-				{segment.percentage}% <span style="direction:rtl">{segment.title}</span>
+				{segment.percentage}%
+				<span style="direction:rtl">{segment.title}</span>
 			</div>
 		</li>
 	{/each}
