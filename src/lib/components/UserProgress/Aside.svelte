@@ -2,6 +2,7 @@
 	import API from '$lib/api/api';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
+	import { user_segments } from '$lib/stores/main';
 
 	export let selectPage;
 	export let tocDisabled;
@@ -11,16 +12,16 @@
 		getUserProgress();
 	});
 
-	let segments = [];
 	async function getUserProgress() {
-		segments = await API.get('/users/' + $user.id + '/progress');
+		const segments = await API.get('/users/' + $user.id + '/progress');
+		user_segments.set(segments);
 	}
 </script>
 
 <ul class="clean-list toc" class:tocDisabled>
 	<div class="close" on:click={close}><i class="fa fa-times" /></div>
 	<h1>My Progress</h1>
-	{#each segments as segment}
+	{#each $user_segments as segment}
 		<li
 			on:click={() => {
 				selectPage(segment.page_number);

@@ -4,6 +4,7 @@
 	import thirteen_liner from '$lib/functions/thirteen_liner';
 	import { user } from '$lib/stores/user';
 	import save from '$lib/functions/debounce';
+	import { user_segments } from '$lib/stores/main';
 
 	let imageSrc = null;
 	let canvas;
@@ -528,6 +529,19 @@
 		}
 		return points;
 	}
+
+	async function quiz() {
+		if (!$user_segments) {
+			const segments = await API.get('/users/' + $user.id + '/progress');
+			user_segments.set(segments);
+		}
+		const user_segment = $user_segments[Math.floor(Math.random() * $user_segments.length)];
+		// selectPage(user_segment.page_number);
+		pageNumber = user_segment.page_number;
+		getPage();
+		console.log({ $user_segments });
+		console.log({ user_segment });
+	}
 </script>
 
 <div class="canvas-container">
@@ -595,6 +609,10 @@
 		<!-- <div class="black" on:click={() => (highlightColor = `rgba(52, 73, 94,1.0)`)} /> -->
 		<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
 	</div>
+
+	<button class="btn btn-outline-info quiz" on:click={quiz}>
+		<i class="fa fa-refresh" />
+	</button>
 
 	<button
 		class="btn btn-outline-info save-page"
@@ -678,6 +696,13 @@
 	.save-page {
 		position: fixed;
 		bottom: 10px;
+		right: 10px;
+		z-index: 9999;
+	}
+
+	.quiz {
+		position: fixed;
+		bottom: 50px;
 		right: 10px;
 		z-index: 9999;
 	}
