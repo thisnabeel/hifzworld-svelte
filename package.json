@@ -38,6 +38,6 @@
 		"svelte-inview": "^4.0.1",
 		"svelte-modals": "^1.2.1",
 		"svelte-outclick": "^3.5.0",
-		"sweetalert2": "^9.7.2"
+		"sweetalert2": "^9.17.4"
 	}
 }

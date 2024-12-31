@@ -531,7 +531,7 @@
 	}
 
 	async function quiz() {
-		if (!$user_segments) {
+		if ($user_segments.length < 1) {
 			const segments = await API.get('/users/' + $user.id + '/progress');
 			user_segments.set(segments);
 		}
@@ -539,8 +539,8 @@
 		// selectPage(user_segment.page_number);
 		pageNumber = user_segment.page_number;
 		getPage();
-		console.log({ $user_segments });
-		console.log({ user_segment });
+		// console.log({ $user_segments });
+		// console.log({ user_segment });
 	}
 </script>
 

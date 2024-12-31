@@ -20,6 +20,7 @@
 			<!-- <li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
 				<a href="/">Home</a>
 			</li> -->
+			<a href="/"><i class="fa fa-home" /></a>
 			{#if $user}
 				<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
 					<a href="/about">About</a>

@@ -4,6 +4,8 @@
 	import { user } from '$lib/stores/user';
 	import Landing from '$lib/components/Landing/Index.svelte';
 	import Aside from '$lib/components/UserProgress/Aside.svelte';
+	import API from '$lib/api/api';
+
 	let showToc = false;
 	let showProgressNav = false;
 	// Math.floor(Math.random() * (799 - 2 + 1)) + 2;
@@ -20,6 +22,14 @@
 		}, 400);
 
 		console.log({ pageNumber });
+	}
+
+	async function getRandomMission() {
+		const mission = await API.get('/missions/random/');
+		Swal.fire(mission.question);
+
+		// Swal.fire('?', mission.question, 'success');
+		// Swal.fire('Perfect!', 'You Passed This Quiz', 'success');
 	}
 </script>
 
@@ -45,6 +55,12 @@
 				tocDisabled = false;
 			}}
 		/>
+		<i
+			class="fa fa-bullseye random-mission"
+			on:click={() => {
+				getRandomMission();
+			}}
+		/>
 	{/if}
 
 	{#if showProgressNav}
@@ -58,7 +74,8 @@
 
 <style>
 	.open-toc,
-	.progress-nav {
+	.progress-nav,
+	.random-mission {
 		position: fixed;
 		top: 10px;
 
@@ -67,6 +84,10 @@
 
 	.open-toc {
 		right: 10px;
+	}
+
+	.random-mission {
+		right: 60px;
 	}
 
 	.progress-nav {
