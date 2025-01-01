@@ -43,7 +43,7 @@
 		left: 4px;
 	}
 	.toc {
-		position: absolute;
+		position: fixed;
 		left: 0;
 		top: 0;
 		height: 100vh;
@@ -52,6 +52,7 @@
 		text-align: right;
 		padding: 40px;
 		background-color: #fff;
+		border-right: 1px solid #000;
 	}
 
 	.toc li {

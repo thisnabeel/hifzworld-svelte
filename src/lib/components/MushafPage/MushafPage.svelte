@@ -4,7 +4,7 @@
 	import thirteen_liner from '$lib/functions/thirteen_liner';
 	import { user } from '$lib/stores/user';
 	import save from '$lib/functions/debounce';
-	import { user_segments } from '$lib/stores/main';
+	import { blind, user_segments } from '$lib/stores/main';
 
 	let imageSrc = null;
 	let canvas;
@@ -48,6 +48,14 @@
 
 	$: getPage(pageNumber);
 
+	async function updatePageRef() {
+		await API.put(`/mushaf_pages/${page.id}/`, {
+			mushaf: page.mushaf,
+			verse_ref_start: page.verse_ref_start,
+			verse_ref_end: page.verse_ref_end
+		});
+	}
+
 	async function getImageSrc() {
 		page = await API.get(`/mushafs/1/pages/${pageNumber}`);
 		console.log({ page });
@@ -55,6 +63,11 @@
 		beginPage();
 	}
 
+	// blind.subscribe((payload) => {
+	// 	if (page && user_page && payload) {
+	// 		redrawCanvas();
+	// 	}
+	// });
 	async function fetchUserPage() {
 		console.log('FETCHING USER');
 		const user_page = await API.get(`/users/${$user.id}/pages/${page.id}`);
@@ -439,7 +452,11 @@
 					context.moveTo(path[0].x, path[0].y);
 					path.forEach((point) => {
 						context.lineTo(point.x, point.y);
-						context.strokeStyle = point.color;
+						if ($blind) {
+							context.strokeStyle = 'rgba(0,0,0, 1)';
+						} else {
+							context.strokeStyle = point.color;
+						}
 					});
 					context.lineWidth = 38;
 					context.lineCap = 'round';
@@ -557,6 +574,13 @@
 	<br />
 	<!-- <button on:click={undo}>Undo</button>
         <button on:click={redo}>Redo</button> -->
+	<button
+		on:click={() => {
+			blind.set(!$blind);
+			redrawCanvas();
+		}}
+		class="btn"><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
+	>
 	<button on:click={toggleDebugMode} class="btn {debugMode ? 'btn-warning' : 'btn-success'}"
 		><i class="fa {debugMode ? 'fa-eraser' : 'fa-pen'}" /></button
 	>
@@ -583,6 +607,31 @@
 		bind:value={pageNumber}
 		on:change={getPage}
 	/>
+
+	{#if page && page.id}
+		<div class="row">
+			<div class="col-lg-6 col-md-6 col-sm-6">
+				<input
+					style="font-size: 20px;"
+					placeholder="Verse Start..."
+					type="text"
+					class="form-control"
+					on:change={() => updatePageRef()}
+					bind:value={page.verse_ref_start}
+				/>
+			</div>
+			<div class="col-lg-6 col-md-6 col-sm-6">
+				<input
+					on:change={() => updatePageRef()}
+					bind:value={page.verse_ref_end}
+					style="font-size: 20px;"
+					placeholder="Verse End..."
+					type="text"
+					class="form-control"
+				/>
+			</div>
+		</div>
+	{/if}
 	<div class="movePage flex">
 		<span
 			class="btn btn-info"

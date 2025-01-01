@@ -23,12 +23,14 @@
 			<a href="/"><i class="fa fa-home" /></a>
 			{#if $user}
 				<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
-					<a href="/about">About</a>
+					<a href="/about"><i class="fa fa-question-circle" /></a>
 				</li>
 
 				{#if $user}
 					<li>
-						<a href="#" on:click={() => user.set(null)}>Sign Out</a>
+						<a href="#" on:click={() => user.set(null)}>
+							<i class="fa fa-sign-out" />
+						</a>
 					</li>
 				{/if}
 			{/if}

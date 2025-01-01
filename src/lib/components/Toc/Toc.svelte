@@ -1,5 +1,6 @@
 <script>
 	import API from '$lib/api/api';
+	import { showToc } from '$lib/stores/main';
 	import { onMount } from 'svelte';
 
 	export let selectPage;
@@ -19,11 +20,17 @@
 	{#each segments as segment}
 		<li on:click={() => selectPage(segment.first_page)}>{segment.title}</li>
 	{/each}
+	<div
+		class="fa fa-close close"
+		on:click={() => {
+			showToc.set(false);
+		}}
+	/>
 </ul>
 
 <style>
 	.toc {
-		position: absolute;
+		position: fixed;
 		right: 0;
 		top: 0;
 		height: 100vh;
@@ -32,6 +39,14 @@
 		text-align: right;
 		padding: 40px;
 		background-color: #fff;
+		border-left: 1px solid #000;
+	}
+
+	.close {
+		position: fixed;
+		right: 10px;
+		top: 10px;
+		z-index: 99999;
 	}
 
 	.toc li {
