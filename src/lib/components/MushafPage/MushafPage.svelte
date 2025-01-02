@@ -533,8 +533,8 @@
 		console.log({ res });
 		saving = 1;
 
-		// user_branch_pages.set([res, ...$user_branch_pages]);
-
+		user_branch_pages.set([res, ...$user_branch_pages]);
+		selected_user_page.set(res);
 		// console.log(getAllCoordinates());
 		// const bounds = canvas.getBoundingClientRect();
 		// console.log({ bounds });
