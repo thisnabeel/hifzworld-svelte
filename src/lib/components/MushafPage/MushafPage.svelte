@@ -4,7 +4,14 @@
 	import thirteen_liner from '$lib/functions/thirteen_liner';
 	import { user } from '$lib/stores/user';
 	import save from '$lib/functions/debounce';
-	import { blind, user_segments } from '$lib/stores/main';
+	import {
+		blind,
+		user_segments,
+		branch,
+		user_branch_pages,
+		selected_user_page
+	} from '$lib/stores/main';
+	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
 
 	let imageSrc = null;
 	let canvas;
@@ -70,18 +77,25 @@
 	// });
 	async function fetchUserPage() {
 		console.log('FETCHING USER');
-		const user_page = await API.get(`/users/${$user.id}/pages/${page.id}`);
-		if (user_page) {
-			console.log({ user_page });
-			if (user_page.drawn_paths) {
-				drawnPaths = user_page.drawn_paths;
-				redrawCanvas();
-			}
-			saving = 1;
+		const user_pages = await API.get(`/users/${$user.id}/pages/${page.id}/branch/${$branch.id}`);
+		if (user_pages) {
+			console.log({ user_pages });
+			user_branch_pages.set(user_pages);
+			selected_user_page.set(user_pages[0]);
 		} else {
 			console.log('not found');
 		}
 	}
+
+	selected_user_page.subscribe((p) => {
+		if (p) {
+			if (p.drawn_paths) {
+				drawnPaths = p.drawn_paths;
+				redrawCanvas();
+			}
+			saving = 1;
+		}
+	});
 
 	function beginPage() {
 		img = new Image();
@@ -511,12 +525,15 @@
 		const hash = {
 			drawn_paths: drawn_payload.length > 0 ? drawn_payload : null,
 			mushaf_page: page.id,
+			branch: $branch.id,
 			user: $user.id
 		};
 
 		const res = await API.post(`/user_pages`, hash);
 		console.log({ res });
 		saving = 1;
+
+		// user_branch_pages.set([res, ...$user_branch_pages]);
 
 		// console.log(getAllCoordinates());
 		// const bounds = canvas.getBoundingClientRect();
@@ -561,6 +578,8 @@
 	}
 </script>
 
+<BranchesHeader />
+
 <div class="canvas-container">
 	<canvas
 		bind:this={canvas}
@@ -581,8 +600,11 @@
 		}}
 		class="btn"><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
 	>
-	<button on:click={toggleDebugMode} class="btn {debugMode ? 'btn-warning' : 'btn-success'}"
-		><i class="fa {debugMode ? 'fa-eraser' : 'fa-pen'}" /></button
+	<button on:click={() => (debugMode = false)} class="btn {debugMode ? '' : 'btn-success'}"
+		><i class="fa fa-pen" /></button
+	>
+	<button on:click={() => (debugMode = true)} class="btn {debugMode ? 'btn-warning' : ''}"
+		><i class="fa fa-eraser" /></button
 	>
 	<!-- <button
 		on:click={() => {
@@ -650,14 +672,16 @@
 			}}><i class="fa fa-arrow-right" /></span
 		>
 	</div>
-	<div class="colors">
-		<div
-			class="yellow"
-			on:click={() => (highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`)}
-		/>
-		<!-- <div class="black" on:click={() => (highlightColor = `rgba(52, 73, 94,1.0)`)} /> -->
-		<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
-	</div>
+	{#if false}
+		<div class="colors">
+			<div
+				class="yellow"
+				on:click={() => (highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`)}
+			/>
+			<!-- <div class="black" on:click={() => (highlightColor = `rgba(52, 73, 94,1.0)`)} /> -->
+			<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
+		</div>
+	{/if}
 
 	<button class="btn btn-outline-info quiz" on:click={quiz}>
 		<i class="fa fa-refresh" />
@@ -665,13 +689,13 @@
 
 	<button
 		class="btn btn-outline-info save-page"
-		class:btn-warning={saving == -1}
+		class:btn-primary={saving == -1}
 		class:btn-info={saving == 0}
 		class:btn-success={saving == 1}
 		on:click={saveDrawingToDatabase}
 	>
 		{#if saving === -1}
-			Unsaved
+			<i class="fa fa-save" /> ?
 		{:else if saving === 0}
 			Saving
 		{:else if saving === 1}

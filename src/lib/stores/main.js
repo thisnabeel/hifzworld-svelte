@@ -6,6 +6,9 @@ import { readable, writable } from 'svelte/store';
 export const user_segments = writable([]);
 export const showToc = writable(false);
 export const blind = writable(false);
+export const branch = writable(null);
+export const user_branch_pages = writable(null);
+export const selected_user_page = writable(null);
 
 export const goHome = () => {
 	selectedExpression.set(null);

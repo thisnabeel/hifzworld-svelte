@@ -8,6 +8,7 @@
 	import Aside from '$lib/components/UserProgress/Aside.svelte';
 	import API from '$lib/api/api';
 	import { user_segments, blind } from '$lib/stores/main';
+	import Swal from 'sweetalert2';
 
 	let showProgressNav = false;
 	// Math.floor(Math.random() * (799 - 2 + 1)) + 2;
@@ -24,6 +25,7 @@
 		}, 400);
 
 		console.log({ pageNumber });
+		Swal.close();
 	}
 
 	async function getRandomMission() {
@@ -35,6 +37,7 @@
 	}
 
 	async function getRandomProgress() {
+		Swal.fire('Retrieving...');
 		const segments = await API.get('/users/' + $user.id + '/progress');
 		user_segments.set(segments);
 		const randomSegment = segments[Math.floor(Math.random() * segments.length)];
@@ -52,7 +55,7 @@
 
 	{#if $user}
 		<i
-			class="fa fa-bars open-toc"
+			class="fa fa-bars open-toc interact"
 			on:click={() => {
 				showToc.set(true);
 				tocDisabled = false;
@@ -60,7 +63,7 @@
 		/>
 
 		<i
-			class="fa fa-bars progress-nav"
+			class="fa fa-bars progress-nav interact"
 			on:click={() => {
 				showProgressNav = true;
 				tocDisabled = false;
@@ -68,13 +71,13 @@
 		/>
 
 		<i
-			class="fa fa-bullseye random-progress"
+			class="fa fa-bullseye random-progress interact"
 			on:click={() => {
 				getRandomProgress();
 			}}
 		/>
 		<i
-			class="fa fa-bullseye random-mission"
+			class="fa fa-bullseye random-mission interact"
 			on:click={() => {
 				getRandomMission();
 			}}
@@ -91,6 +94,10 @@
 {/if}
 
 <style>
+	.interact {
+		color: #f8dec0;
+	}
+
 	.open-toc,
 	.progress-nav,
 	.random-mission,
