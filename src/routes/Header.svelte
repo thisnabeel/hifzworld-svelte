@@ -3,8 +3,11 @@
 	import logo from '$lib/images/svelte-logo.svg';
 	import github from '$lib/images/github.svg';
 	import { user } from '$lib/stores/user';
+	import HeaderCorners from '$lib/components/HeaderCorners/HeaderCorners.svelte';
+	import { goto } from '$app/navigation';
 </script>
 
+<HeaderCorners />
 <header>
 	<div class="corner">
 		<!-- <a href="https://kit.svelte.dev">
@@ -20,10 +23,10 @@
 			<!-- <li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
 				<a href="/">Home</a>
 			</li> -->
-			<a href="/"><i class="fa fa-home" /></a>
+			<a href="#" on:click={() => goto('/')}><i class="fa fa-home" /></a>
 			{#if $user}
 				<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
-					<a href="/about"><i class="fa fa-question-circle" /></a>
+					<a on:click={() => goto('/about')} href="#"><i class="fa fa-question-circle" /></a>
 				</li>
 
 				{#if $user}

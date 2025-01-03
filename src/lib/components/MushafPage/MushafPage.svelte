@@ -9,9 +9,12 @@
 		user_segments,
 		branch,
 		user_branch_pages,
-		selected_user_page
+		selected_user_page,
+		current_page_number
 	} from '$lib/stores/main';
 	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
+
+	let unsubscribe;
 
 	let imageSrc = null;
 	let canvas;
@@ -32,8 +35,6 @@
 
 	let saving = -1;
 
-	export let pageNumber;
-
 	let touchId; // To track the touch ID for drawing
 	let touchPos; // To store the touch position
 	let clickStartY = null; // Variable to store the x-coordinate where the click started
@@ -41,19 +42,40 @@
 	let page;
 
 	onMount(() => {
-		if ($user) {
-			// getImageSrc();
-			if (pageNumber) {
-				getPage();
-			}
+		// if ($user) {
+		// 	if ($current_page_number) {
+		// 		getPage();
+		// 	}
+		// }
+
+		if (!canvas) {
+			console.error('Canvas element not found');
+			return;
 		}
+
+		context = canvas.getContext('2d');
+		if (!context) {
+			console.error('Failed to initialize canvas context');
+			return;
+		}
+
+		console.log('Canvas and context are ready');
+
+		unsubscribe = current_page_number.subscribe((p) => {
+			console.log('got ', p);
+			getPage(p); // Handle the page retrieval
+		});
 	});
 
 	onDestroy(() => {
 		closePage();
-	});
 
-	$: getPage(pageNumber);
+		// Unsubscribe from current_page_number
+		if (unsubscribe) {
+			unsubscribe();
+		}
+	});
+	// $: getPage($current_page_number);
 
 	async function updatePageRef() {
 		await API.put(`/mushaf_pages/${page.id}/`, {
@@ -64,7 +86,7 @@
 	}
 
 	async function getImageSrc() {
-		page = await API.get(`/mushafs/1/pages/${pageNumber}`);
+		page = await API.get(`/mushafs/1/pages/${$current_page_number}`);
 		console.log({ page });
 		imageSrc = page.image_s3_url;
 		beginPage();
@@ -98,6 +120,11 @@
 	});
 
 	function beginPage() {
+		if (!canvas) {
+			console.error('Canvas element not found');
+			return;
+		}
+
 		img = new Image();
 		img.src = imageSrc;
 
@@ -145,9 +172,11 @@
 	function closePage() {
 		if (typeof document !== 'undefined') {
 			// document.removeEventListener('click', handleDebugClick);
-			canvas.removeEventListener('touchstart', handleTouchStart);
-			canvas.removeEventListener('touchmove', handleTouchMove);
-			canvas.removeEventListener('touchend', handleTouchEnd);
+			if (canvas) {
+				canvas.removeEventListener('touchstart', handleTouchStart);
+				canvas.removeEventListener('touchmove', handleTouchMove);
+				canvas.removeEventListener('touchend', handleTouchEnd);
+			}
 		}
 		drawnPaths = [];
 	}
@@ -212,7 +241,7 @@
 
 	async function getPage(trigger) {
 		closePage();
-		getImageSrc(pageNumber);
+		getImageSrc($current_page_number);
 	}
 
 	function getMousePos(event) {
@@ -455,6 +484,11 @@
 	}
 
 	function redrawCanvas() {
+		if (!canvas || !context) {
+			console.warn('Canvas or context is not initialized yet.');
+			return;
+		}
+		console.log('Context Initialized');
 		context.clearRect(0, 0, canvas.width, canvas.height);
 		context.drawImage(img, 0, 0, img.width, img.height);
 
@@ -571,7 +605,7 @@
 		}
 		const user_segment = $user_segments[Math.floor(Math.random() * $user_segments.length)];
 		// selectPage(user_segment.page_number);
-		pageNumber = user_segment.page_number;
+		current_page_number.set(user_segment.page_number);
 		getPage();
 		// console.log({ $user_segments });
 		// console.log({ user_segment });
@@ -626,7 +660,7 @@
 	<input
 		type="number"
 		class="form-control text-center"
-		bind:value={pageNumber}
+		bind:value={$current_page_number}
 		on:change={getPage}
 	/>
 
@@ -658,7 +692,7 @@
 		<span
 			class="btn btn-info"
 			on:click={() => {
-				pageNumber = pageNumber + 1;
+				current_page_number.set($current_page_number + 1);
 				getPage();
 			}}><i class="fa fa-arrow-left" /></span
 		>
@@ -666,8 +700,8 @@
 		<span
 			class="btn btn-info"
 			on:click={() => {
-				if (pageNumber < 3) return;
-				pageNumber = pageNumber - 1;
+				if ($current_page_number < 3) return;
+				current_page_number.set($current_page_number - 1);
 				getPage();
 			}}><i class="fa fa-arrow-right" /></span
 		>
