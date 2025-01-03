@@ -7,7 +7,9 @@
 	import { goto } from '$app/navigation';
 </script>
 
-<HeaderCorners />
+{#if $user}
+	<HeaderCorners />
+{/if}
 <header>
 	<div class="corner">
 		<!-- <a href="https://kit.svelte.dev">
