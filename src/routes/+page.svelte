@@ -38,12 +38,13 @@
 
 	async function getRandomProgress() {
 		Swal.fire('Retrieving...');
-		const segments = await API.get('/users/' + $user.id + '/progress');
-		user_segments.set(segments);
-		const randomSegment = segments[Math.floor(Math.random() * segments.length)];
+		const segment = await API.get('/users/' + $user.id + '/progress/random');
+		console.log({ segment });
+		// user_segments.set(segments);
+		// const randomSegment = segments[Math.floor(Math.random() * segments.length)];
 		blind.set(true);
-		// console.log({ randomSegment });
-		handleSelectPage(randomSegment.page_number);
+		// // console.log({ randomSegment });
+		handleSelectPage(segment.mushaf_page.page_number);
 	}
 </script>
 
@@ -71,13 +72,13 @@
 		/>
 
 		<i
-			class="fa fa-bullseye random-progress interact"
+			class="fa fa-gamepad random-progress interact"
 			on:click={() => {
 				getRandomProgress();
 			}}
 		/>
 		<i
-			class="fa fa-bullseye random-mission interact"
+			class="fa fa-gamepad random-mission interact"
 			on:click={() => {
 				getRandomMission();
 			}}
