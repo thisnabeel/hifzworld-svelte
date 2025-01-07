@@ -37,7 +37,6 @@
 		"smodale": "^1.0.5",
 		"sv-bootstrap-modal": "^1.0.3",
 		"svelte-inview": "^4.0.1",
-		"svelte-modals": "^1.2.0",
-		"svelte-outclick": "^3.2.0"
+		"svelte-modals": "^1.2.0"
 	}
 }
