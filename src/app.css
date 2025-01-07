@@ -2,6 +2,14 @@
 	z-index: 9999999 !important;
 }
 
+.swal2-container > div {
+	display: block !important;
+}
+
+.swal2-validation-message {
+	display: none;
+}
+
 h1,
 h2,
 h4,

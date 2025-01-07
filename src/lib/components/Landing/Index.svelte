@@ -27,9 +27,9 @@
 	<p>We made this platform so that Huffaz could easily</p>
 
 	<ul>
-		<li>test each other &</li>
+		<li>Track the Health of their Hifz</li>
 		<li>
-			mark mistakes on their mushafs &
+			Mark mistakes on their mushafs
 			<!-- <div
 				on:click={() => alert('Demo clicked')}
 				style="background: lightblue; display:inline-block; padding: 6px;"
@@ -37,7 +37,7 @@
 				Click to see Demo
 			</div> -->
 		</li>
-		<li>Track the Health of their Hifz</li>
+		<li>Test each other</li>
 	</ul>
 
 	<p>

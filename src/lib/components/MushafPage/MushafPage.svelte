@@ -10,10 +10,12 @@
 		branch,
 		user_branch_pages,
 		selected_user_page,
-		current_page_number
+		current_page_number,
+		current_page
 	} from '$lib/stores/main';
 	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
-
+	import PageLister from '$lib/components/PageLister/Index.svelte';
+	import VerseSearch from '$lib/components/VerseSearch/Index.svelte';
 	let unsubscribe;
 
 	let imageSrc = null;
@@ -38,8 +40,6 @@
 	let touchId; // To track the touch ID for drawing
 	let touchPos; // To store the touch position
 	let clickStartY = null; // Variable to store the x-coordinate where the click started
-
-	let page;
 
 	onMount(() => {
 		// if ($user) {
@@ -78,17 +78,17 @@
 	// $: getPage($current_page_number);
 
 	async function updatePageRef() {
-		await API.put(`/mushaf_pages/${page.id}/`, {
-			mushaf: page.mushaf,
-			verse_ref_start: page.verse_ref_start,
-			verse_ref_end: page.verse_ref_end
+		await API.put(`/mushaf_pages/${$current_page.id}/`, {
+			mushaf: $current_page.mushaf,
+			verse_ref_start: $current_page.verse_ref_start,
+			verse_ref_end: $current_page.verse_ref_end
 		});
 	}
 
 	async function getImageSrc() {
-		page = await API.get(`/mushafs/1/pages/${$current_page_number}`);
-		console.log({ page });
-		imageSrc = page.image_s3_url;
+		current_page.set(await API.get(`/mushafs/1/pages/${$current_page_number}`));
+		console.log($current_page);
+		imageSrc = $current_page.image_s3_url;
 		beginPage();
 	}
 
@@ -99,7 +99,9 @@
 	// });
 	async function fetchUserPage() {
 		console.log('FETCHING USER');
-		const user_pages = await API.get(`/users/${$user.id}/pages/${page.id}/branch/${$branch.id}`);
+		const user_pages = await API.get(
+			`/users/${$user.id}/pages/${$current_page.id}/branch/${$branch.id}`
+		);
 		if (user_pages) {
 			console.log({ user_pages });
 			user_branch_pages.set(user_pages);
@@ -558,7 +560,7 @@
 
 		const hash = {
 			drawn_paths: drawn_payload.length > 0 ? drawn_payload : null,
-			mushaf_page: page.id,
+			mushaf_page: $current_page.id,
 			branch: $branch.id,
 			user: $user.id
 		};
@@ -612,9 +614,12 @@
 	}
 </script>
 
+<VerseSearch />
+
 <BranchesHeader />
 
 <div class="canvas-container">
+	<!-- <PageLister /> -->
 	<canvas
 		bind:this={canvas}
 		on:mousedown={handleMouseDown}
@@ -664,7 +669,7 @@
 		on:change={getPage}
 	/>
 
-	{#if page && page.id}
+	{#if $current_page && $current_page.id}
 		<div class="row">
 			<div class="col-lg-6 col-md-6 col-sm-6">
 				<input
@@ -673,13 +678,13 @@
 					type="text"
 					class="form-control"
 					on:change={() => updatePageRef()}
-					bind:value={page.verse_ref_start}
+					bind:value={$current_page.verse_ref_start}
 				/>
 			</div>
 			<div class="col-lg-6 col-md-6 col-sm-6">
 				<input
 					on:change={() => updatePageRef()}
-					bind:value={page.verse_ref_end}
+					bind:value={$current_page.verse_ref_end}
 					style="font-size: 20px;"
 					placeholder="Verse End..."
 					type="text"
@@ -752,6 +757,7 @@
 		align-items: center;
 		height: auto; /* Set the height of the parent div to the full viewport height */
 		margin: 0; /* Remove default margin to avoid unnecessary spacing */
+		position: relative;
 	}
 
 	canvas {

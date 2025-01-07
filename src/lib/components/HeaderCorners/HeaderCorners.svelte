@@ -3,12 +3,15 @@
 	import Toc from '$lib/components/Toc/Toc.svelte';
 	import { user } from '$lib/stores/user';
 	import { showToc } from '$lib/stores/main';
-
+	import { openModal } from 'svelte-modals';
+	import PopQuizModal from '../Modals/PopQuizModal.svelte';
 	import Landing from '$lib/components/Landing/Index.svelte';
 	import Aside from '$lib/components/UserProgress/Aside.svelte';
 	import API from '$lib/api/api';
 	import { user_segments, blind, current_page_number } from '$lib/stores/main';
 	import { goto } from '$app/navigation';
+	import Swal from 'sweetalert2';
+	import fetchPageByVerse from '$lib/functions/fetchPageByVerse';
 
 	let showProgressNav = false;
 	// Math.floor(Math.random() * (799 - 2 + 1)) + 2;
@@ -30,7 +33,24 @@
 
 	async function getRandomMission() {
 		const mission = await API.get('/missions/random/');
-		Swal.fire(mission.question);
+		// Swal.fire(mission.question);
+
+		// openModal(PopQuizModal, { mission: mission });
+
+		Swal.fire({
+			title: 'Pop Quiz',
+			text: mission.question,
+			showCancelButton: true,
+			confirmButtonColor: '#3085d6',
+			cancelButtonColor: '#d33',
+			confirmButtonText: 'Show Me!'
+		}).then((result) => {
+			if (result.isConfirmed) {
+				// console.log(mission);
+
+				fetchPageByVerse(mission.verse_ref);
+			}
+		});
 
 		// Swal.fire('?', mission.question, 'success');
 		// Swal.fire('Perfect!', 'You Passed This Quiz', 'success');

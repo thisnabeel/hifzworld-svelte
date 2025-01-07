@@ -5,6 +5,7 @@
 	import { user } from '$lib/stores/user';
 	import HeaderCorners from '$lib/components/HeaderCorners/HeaderCorners.svelte';
 	import { goto } from '$app/navigation';
+	import { showVerseRefSearcher } from '$lib/stores/main';
 </script>
 
 {#if $user}
@@ -31,12 +32,20 @@
 					<a on:click={() => goto('/about')} href="#"><i class="fa fa-question-circle" /></a>
 				</li>
 
+				<li aria-current={$page.url.pathname === '/settings' ? 'page' : undefined}>
+					<a on:click={() => goto('/settings')} href="#"><i class="fa fa-cog" /></a>
+				</li>
+
+				<li>
+					<a on:click={() => showVerseRefSearcher.set(true)} href="#"><i class="fa fa-search" /></a>
+				</li>
+
 				{#if $user}
-					<li>
+					<!-- <li>
 						<a href="#" on:click={() => user.set(null)}>
 							<i class="fa fa-sign-out" />
 						</a>
-					</li>
+					</li> -->
 				{/if}
 			{/if}
 		</ul>
