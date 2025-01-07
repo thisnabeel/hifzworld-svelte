@@ -669,7 +669,7 @@
 		on:change={getPage}
 	/>
 
-	{#if $current_page && $current_page.id}
+	{#if $current_page && $current_page.id && false}
 		<div class="row">
 			<div class="col-lg-6 col-md-6 col-sm-6">
 				<input
@@ -722,9 +722,9 @@
 		</div>
 	{/if}
 
-	<button class="btn btn-outline-info quiz" on:click={quiz}>
+	<!-- <button class="btn btn-outline-info quiz" on:click={quiz}>
 		<i class="fa fa-refresh" />
-	</button>
+	</button> -->
 
 	<button
 		class="btn btn-outline-info save-page"

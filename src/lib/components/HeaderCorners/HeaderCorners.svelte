@@ -10,7 +10,7 @@
 	import API from '$lib/api/api';
 	import { user_segments, blind, current_page_number } from '$lib/stores/main';
 	import { goto } from '$app/navigation';
-	import Swal from 'sweetalert2';
+
 	import fetchPageByVerse from '$lib/functions/fetchPageByVerse';
 
 	let showProgressNav = false;
@@ -35,22 +35,22 @@
 		const mission = await API.get('/missions/random/');
 		// Swal.fire(mission.question);
 
-		// openModal(PopQuizModal, { mission: mission });
+		openModal(PopQuizModal, { mission: mission });
 
-		Swal.fire({
-			title: 'Pop Quiz',
-			text: mission.question,
-			showCancelButton: true,
-			confirmButtonColor: '#3085d6',
-			cancelButtonColor: '#d33',
-			confirmButtonText: 'Show Me!'
-		}).then((result) => {
-			if (result.isConfirmed) {
-				// console.log(mission);
+		// Swal.fire({
+		// 	title: 'Pop Quiz',
+		// 	text: mission.question,
+		// 	showCancelButton: true,
+		// 	confirmButtonColor: '#3085d6',
+		// 	cancelButtonColor: '#d33',
+		// 	confirmButtonText: 'Show Me!'
+		// }).then((result) => {
+		// 	if (result.isConfirmed) {
+		// 		// console.log(mission);
 
-				fetchPageByVerse(mission.verse_ref);
-			}
-		});
+		// 		fetchPageByVerse(mission.verse_ref);
+		// 	}
+		// });
 
 		// Swal.fire('?', mission.question, 'success');
 		// Swal.fire('Perfect!', 'You Passed This Quiz', 'success');
