@@ -4,6 +4,19 @@
 	import { onMount } from 'svelte';
 
 	export let mission_sets;
+	let newMissionSetTitle;
+
+	async function createMissionSet() {
+		const res = await API.post(`/mission_sets/`, {
+			title: newMissionSetTitle,
+			position: mission_sets.length + 1
+		});
+
+		console.log(res);
+		mission_sets = [...mission_sets, res];
+		newMissionSetTitle = '';
+	}
+
 	onMount(async () => {
 		mission_sets = await API.get('/mission_sets/');
 	});
@@ -20,6 +33,10 @@
 		{set.title}
 	</li>
 {/each}
+<input type="text" class="form-control" bind:value={newMissionSetTitle} />
+<div class="btn btn-info" on:click={createMissionSet}>
+	<i class="fa fa-plus" />
+</div>
 
 <style>
 </style>

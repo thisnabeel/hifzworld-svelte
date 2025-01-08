@@ -40,6 +40,7 @@
 		padding: 40px;
 		background-color: #fff;
 		border-left: 1px solid #000;
+		z-index: 99999;
 	}
 
 	.close {
@@ -66,6 +67,7 @@
 		/* Styles specific to iPhones go here */
 		.toc {
 			width: 100vw;
+			z-index: 9999;
 		}
 	}
 </style>
