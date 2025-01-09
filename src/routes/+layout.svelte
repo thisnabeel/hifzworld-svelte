@@ -8,6 +8,9 @@
 
 	import { Modals, closeModal } from 'svelte-modals';
 	import { fade } from 'svelte/transition';
+	import { showVerseRefSearcher, showStats } from '$lib/stores/main';
+	import VerseSearch from '$lib/components/VerseSearch/Index.svelte';
+	import Stats from '$lib/components/Stats/Index.svelte';
 
 	user.subscribe((user) => console.log(user));
 </script>
@@ -21,6 +24,13 @@
 
 <div class="app">
 	<Header />
+
+	{#if $showVerseRefSearcher}
+		<VerseSearch />
+	{/if}
+	{#if $showStats}
+		<Stats />
+	{/if}
 
 	<main>
 		<slot />

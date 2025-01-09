@@ -5,7 +5,7 @@
 	import { user } from '$lib/stores/user';
 	import HeaderCorners from '$lib/components/HeaderCorners/HeaderCorners.svelte';
 	import { goto } from '$app/navigation';
-	import { showVerseRefSearcher } from '$lib/stores/main';
+	import { showStats, showVerseRefSearcher } from '$lib/stores/main';
 </script>
 
 {#if $user}
@@ -41,9 +41,11 @@
 				</li>
 
 				<li>
-					<a on:click={() => showVerseRefSearcher.set(true)} href="#"
-						><i class="fa fa-bar-chart" /></a
-					>
+					<a on:click={() => goto('/friends')} href="#"><i class="fa fa-users" /></a>
+				</li>
+
+				<li>
+					<a on:click={() => showStats.set(true)} href="#"><i class="fa fa-bar-chart" /></a>
 				</li>
 
 				{#if $user}

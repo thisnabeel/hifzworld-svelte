@@ -30,8 +30,11 @@
 			<div>
 				<div class="btn close" on:click={closeModal}><i class="fa fa-times" /></div>
 			</div>
-			<div class="btn travel" on:click={() => fetchPageByVerse(mission.verse_ref)}>
-				<i class="fa fa-plane" />
+			<div
+				class="btn btn-outline-primary travel"
+				on:click={() => fetchPageByVerse(mission.verse_ref)}
+			>
+				Visit Page
 			</div>
 
 			<div class="flex">

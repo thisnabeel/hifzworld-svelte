@@ -12,6 +12,7 @@ export const selected_user_page = writable(null);
 export const current_page_number = writable(2);
 export const current_page = writable(null);
 export const showVerseRefSearcher = writable(false);
+export const showStats = writable(false);
 
 export const goHome = () => {
 	selectedExpression.set(null);

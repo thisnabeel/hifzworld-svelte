@@ -1,25 +1,29 @@
 <script>
 	import API from '$lib/api/api';
-	import { current_page, current_page_number, showVerseRefSearcher } from '$lib/stores/main';
-	let verse_ref;
+	import { current_page, current_page_number, showStats } from '$lib/stores/main';
 	import fetchPageByVerse from '$lib/functions/fetchPageByVerse';
 	import PopQuizModal from '../Modals/PopQuizModal.svelte';
 	import { openModal } from 'svelte-modals';
+	import { onMount } from 'svelte';
+	import { user } from '$lib/stores/user';
 
 	// find_page/<int:mushaf_id>/<int:verse_verse_ref>
+
+	onMount(() => {
+		fetchStats();
+	});
+
+	async function fetchStats() {
+		const res = await API.get(`/users/${$user.id}/stats/`);
+		console.log({ res });
+	}
 </script>
 
-{#if $showVerseRefSearcher}
-	<div class="backdrop" on:click={() => showVerseRefSearcher.set(false)} />
-	<div class="wrapper">
-		<i class="fa fa-times close" on:click={() => showVerseRefSearcher.set(false)} />
-		<h3>Find Page by Verse:</h3>
-		<input type="text" class="form-control" placeholder="Verse ex: 21:11" bind:value={verse_ref} />
-		<div class="btn btn-info" on:click={() => fetchPageByVerse(verse_ref)}>
-			<i class="fa fa-search" />
-		</div>
-	</div>
-{/if}
+<div class="backdrop" on:click={() => showStats.set(false)} />
+<div class="wrapper">
+	<i class="fa fa-times close" on:click={() => showStats.set(false)} />
+	<h3>Stats:</h3>
+</div>
 
 <style>
 	.backdrop {

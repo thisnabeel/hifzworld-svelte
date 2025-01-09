@@ -15,7 +15,6 @@
 	} from '$lib/stores/main';
 	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
 	import PageLister from '$lib/components/PageLister/Index.svelte';
-	import VerseSearch from '$lib/components/VerseSearch/Index.svelte';
 	let unsubscribe;
 
 	let imageSrc = null;
@@ -614,8 +613,6 @@
 	}
 </script>
 
-<VerseSearch />
-
 <BranchesHeader />
 
 <div class="canvas-container">
@@ -810,7 +807,7 @@
 		position: fixed;
 		bottom: 10px;
 		right: 10px;
-		z-index: 9999;
+		z-index: 9998;
 	}
 
 	.quiz {

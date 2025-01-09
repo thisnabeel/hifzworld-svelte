@@ -1,5 +1,5 @@
 import API from '$lib/api/api';
-import { current_page, current_page_number } from '$lib/stores/main';
+import { current_page, current_page_number, showVerseRefSearcher } from '$lib/stores/main';
 import { closeModal } from 'svelte-modals';
 
 export default async function fetchPageByVerse(verse_ref) {
@@ -8,4 +8,5 @@ export default async function fetchPageByVerse(verse_ref) {
 	current_page.set(page);
 	current_page_number.set(page.page_number);
 	closeModal();
+	showVerseRefSearcher.set(false);
 }
