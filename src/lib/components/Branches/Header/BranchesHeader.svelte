@@ -20,7 +20,12 @@
 {#if branches}
 	<div class="wrapper">
 		{#if $user}
-			<input type="text" disabled class="form-control" value={$user.email.split('@')[0]} />
+			<input
+				type="text"
+				disabled
+				class="form-control"
+				value={$user.first_name + ' ' + $user.last_name}
+			/>
 		{/if}
 		<div class="flex">
 			<div class="flex-50">

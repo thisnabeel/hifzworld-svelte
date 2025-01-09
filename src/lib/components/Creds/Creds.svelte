@@ -6,6 +6,9 @@
 	let email;
 	let password;
 	let confirmPassword;
+	let gender;
+	let first_name;
+	let last_name;
 
 	$: console.log(email);
 
@@ -27,6 +30,9 @@
 		if (verb === 'signUp') {
 			response = await Api.post('/users/sign_up', {
 				email: email,
+				first_name: first_name,
+				last_name: last_name,
+				gender: gender,
 				password: password,
 				password_confirmation: confirmPassword
 			});
@@ -71,6 +77,18 @@
 
 		<label>Email:</label>
 		<input type="text" bind:value={email} />
+
+		<label>First Name:</label>
+		<input type="text" bind:value={first_name} />
+
+		<label>Last Name:</label>
+		<input type="text" bind:value={last_name} />
+
+		<label>Gender:</label>
+		<select name="" id="" bind:value={gender} class="form-control">
+			<option value="male">Male</option>
+			<option value="female">Female</option>
+		</select>
 
 		<label>Password:</label>
 		<input type="password" bind:value={password} />
