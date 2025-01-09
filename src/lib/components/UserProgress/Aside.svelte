@@ -72,6 +72,7 @@
 		/* Styles specific to iPhones go here */
 		.toc {
 			width: 100vw;
+			z-index: 9999;
 		}
 	}
 </style>
