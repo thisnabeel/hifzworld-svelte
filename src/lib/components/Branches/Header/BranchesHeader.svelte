@@ -6,8 +6,6 @@
 
 	let branches;
 
-	onMount(async () => {});
-
 	user.subscribe((payload) => {
 		getBranches(payload);
 	});
@@ -21,6 +19,9 @@
 
 {#if branches}
 	<div class="wrapper">
+		{#if $user}
+			<input type="text" disabled class="form-control" value={$user.email.split('@')[0]} />
+		{/if}
 		<div class="flex">
 			<div class="flex-50">
 				<select name="" id="" class="form-control" on:change={(val) => console.log({ val })}>

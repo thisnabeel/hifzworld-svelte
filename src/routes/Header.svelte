@@ -40,6 +40,12 @@
 					<a on:click={() => showVerseRefSearcher.set(true)} href="#"><i class="fa fa-search" /></a>
 				</li>
 
+				<li>
+					<a on:click={() => showVerseRefSearcher.set(true)} href="#"
+						><i class="fa fa-bar-chart" /></a
+					>
+				</li>
+
 				{#if $user}
 					<!-- <li>
 						<a href="#" on:click={() => user.set(null)}>

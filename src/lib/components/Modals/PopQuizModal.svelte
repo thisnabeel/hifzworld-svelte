@@ -24,18 +24,22 @@
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
 	<div class="modal-container">
 		<div class="modal-content">
-			<h1>{mission.question}</h1>
+			<br />
+			<h1 class="question">{mission.question}</h1>
+
+			<div>
+				<div class="btn close" on:click={closeModal}><i class="fa fa-times" /></div>
+			</div>
+			<div class="btn travel" on:click={() => fetchPageByVerse(mission.verse_ref)}>
+				<i class="fa fa-plane" />
+			</div>
+
 			<div class="flex">
 				<div>
-					<div
-						class="btn btn-block btn-primary"
-						on:click={() => fetchPageByVerse(mission.verse_ref)}
-					>
-						Visit
-					</div>
+					<div class="btn btn-block btn-success" on:click={() => {}}>Confident</div>
 				</div>
 				<div>
-					<div class="btn btn-block btn-danger" on:click={() => closeModal()}>Close</div>
+					<div class="btn btn-block btn-danger" on:click={() => {}}>Stuttering</div>
 				</div>
 			</div>
 		</div>
@@ -43,6 +47,20 @@
 </div>
 
 <style>
+	.question {
+		padding: 1em;
+	}
+	.close {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+	}
+
+	.travel {
+		position: absolute;
+		top: 4px;
+		left: 4px;
+	}
 	.btn-block {
 		display: block;
 	}
