@@ -613,7 +613,7 @@
 	}
 </script>
 
-<BranchesHeader />
+<BranchesHeader {saveDrawingToDatabase} {saving} />
 
 <div class="canvas-container">
 	<!-- <PageLister /> -->
@@ -723,7 +723,7 @@
 		<i class="fa fa-refresh" />
 	</button> -->
 
-	<button
+	<!-- <button
 		class="btn btn-outline-info save-page"
 		class:btn-primary={saving == -1}
 		class:btn-info={saving == 0}
@@ -737,7 +737,7 @@
 		{:else if saving === 1}
 			Saved
 		{/if}
-	</button>
+	</button> -->
 
 	<br />
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
