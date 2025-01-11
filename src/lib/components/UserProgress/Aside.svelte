@@ -20,7 +20,7 @@
 
 <ul class="clean-list toc" class:tocDisabled>
 	<div class="close" on:click={close}><i class="fa fa-times" /></div>
-	<h1>My Progress</h1>
+	<h1>My Progress:</h1>
 	{#each $user_segments.filter((s) => s.percentage !== 0) as segment}
 		<li
 			on:click={() => {

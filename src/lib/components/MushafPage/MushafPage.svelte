@@ -659,6 +659,40 @@
 		class="btn">Invert</button
 	>
 
+	<!-- <button
+		class="btn btn-outline-info"
+		class:btn-primary={saving == -1}
+		class:btn-info={saving == 0}
+		class:btn-success={saving == 1}
+		on:click={saveDrawingToDatabase}
+	>
+		{#if saving === -1}
+			<i class="fa fa-save" /> ?
+		{:else if saving === 0}
+			Saving
+		{:else if saving === 1}
+			Saved
+		{/if}
+	</button> -->
+
+	{#if $user_branch_pages && $user_branch_pages.length > 0}
+		{#if saving === 0}
+			<button class="btn btn-block btn-outline-primary saving" style="background: #ccc">
+				<i class="fa fa-save" />
+			</button>
+		{:else}
+			<button class="btn btn-block btn-outline-primary" on:click={saveDrawingToDatabase}>
+				<i class="fa fa-save" />
+			</button>
+		{/if}
+	{:else if saving === 0}
+		<button class="btn btn-block btn-primary" on:click={() => {}}>Saving...</button>
+	{:else}
+		<button class="btn btn-block btn-outline-primary" on:click={saveDrawingToDatabase}>
+			No Commits Yet, Save?
+		</button>
+	{/if}
+
 	<input
 		type="number"
 		class="form-control text-center"
@@ -721,22 +755,6 @@
 
 	<!-- <button class="btn btn-outline-info quiz" on:click={quiz}>
 		<i class="fa fa-refresh" />
-	</button> -->
-
-	<!-- <button
-		class="btn btn-outline-info save-page"
-		class:btn-primary={saving == -1}
-		class:btn-info={saving == 0}
-		class:btn-success={saving == 1}
-		on:click={saveDrawingToDatabase}
-	>
-		{#if saving === -1}
-			<i class="fa fa-save" /> ?
-		{:else if saving === 0}
-			Saving
-		{:else if saving === 1}
-			Saved
-		{/if}
 	</button> -->
 
 	<br />

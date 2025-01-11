@@ -98,7 +98,10 @@
 			goto('/');
 			getRandomProgress();
 		}}
-	/>
+		>{#if $user.starting_verse_boundary.length > 0 && $user.ending_verse_boundary.length > 0}
+			<i class="fa fa-lock lock" />
+		{/if}</i
+	>
 	<i
 		class="fa fa-dice random-mission interact"
 		on:click={() => {
@@ -145,5 +148,13 @@
 
 	.progress-nav {
 		left: 10px;
+	}
+
+	.lock {
+		color: #faad57;
+		font-size: 20px;
+		left: 0px;
+		top: 24px;
+		position: absolute;
 	}
 </style>

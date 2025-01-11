@@ -10,6 +10,9 @@
 	display: none;
 }
 
+.flex-50 {
+	flex: 1 1 50%;
+}
 h1,
 h2,
 h4,
