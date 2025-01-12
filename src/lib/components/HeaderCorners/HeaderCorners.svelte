@@ -98,7 +98,7 @@
 			goto('/');
 			getRandomProgress();
 		}}
-		>{#if $user.starting_verse_boundary.length > 0 && $user.ending_verse_boundary.length > 0}
+		>{#if $user.starting_verse_boundary && $user.ending_verse_boundary && $user.starting_verse_boundary.length > 0 && $user.ending_verse_boundary.length > 0}
 			<i class="fa fa-lock lock" />
 		{/if}</i
 	>
