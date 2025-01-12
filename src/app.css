@@ -10,6 +10,9 @@
 	display: none;
 }
 
+.btn-block {
+	display: block;
+}
 .flex-50 {
 	flex: 1 1 50%;
 }

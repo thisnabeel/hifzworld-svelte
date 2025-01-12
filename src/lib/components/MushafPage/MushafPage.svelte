@@ -677,18 +677,18 @@
 
 	{#if $user_branch_pages && $user_branch_pages.length > 0}
 		{#if saving === 0}
-			<button class="btn btn-block btn-outline-primary saving" style="background: #ccc">
+			<button class="btn btn-outline-primary saving" style="background: #ccc">
 				<i class="fa fa-save" />
 			</button>
 		{:else}
-			<button class="btn btn-block btn-outline-primary" on:click={saveDrawingToDatabase}>
+			<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
 				<i class="fa fa-save" />
 			</button>
 		{/if}
 	{:else if saving === 0}
-		<button class="btn btn-block btn-primary" on:click={() => {}}>Saving...</button>
+		<button class="btn btn-primary" on:click={() => {}}>Saving...</button>
 	{:else}
-		<button class="btn btn-block btn-outline-primary" on:click={saveDrawingToDatabase}>
+		<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
 			No Commits Yet, Save?
 		</button>
 	{/if}

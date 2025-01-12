@@ -31,7 +31,7 @@
 	<table class="table">
 		<tr />
 		<tr>
-			<td><i class="fa fa-lock" />Tester Lock:</td>
+			<td><i class="fa fa-lock" />Testing Boundary:</td>
 			<td
 				><div class="flex">
 					<div class="flex-50">
