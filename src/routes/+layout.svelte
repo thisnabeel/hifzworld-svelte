@@ -8,7 +8,7 @@
 
 	import { Modals, closeModal } from 'svelte-modals';
 	import { fade } from 'svelte/transition';
-	import { showVerseRefSearcher, showStats } from '$lib/stores/main';
+	import { showVerseRefSearcher, showStats, viewingAs } from '$lib/stores/main';
 	import VerseSearch from '$lib/components/VerseSearch/Index.svelte';
 	import Stats from '$lib/components/Stats/Index.svelte';
 
@@ -22,7 +22,7 @@
 	/>
 </svelte:head>
 
-<div class="app">
+<div class="app" class:viewingAs={$user && $viewingAs && $viewingAs.id !== $user.id}>
 	<Header />
 
 	{#if $showVerseRefSearcher}
@@ -45,6 +45,10 @@
 </div>
 
 <style>
+	.viewingAs {
+		background-color: #fff1cf;
+	}
+
 	/* .backdrop {
 		height: 100%;
 		width: 100%;

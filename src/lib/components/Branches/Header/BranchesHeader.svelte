@@ -1,6 +1,6 @@
 <script>
 	import API from '$lib/api/api';
-	import { branch, user_branch_pages, selected_user_page } from '$lib/stores/main';
+	import { branch, user_branch_pages, selected_user_page, viewingAs } from '$lib/stores/main';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
 
@@ -19,17 +19,21 @@
 		console.log(branches);
 		branch.set(branches[0]);
 	}
+
+	$: console.log($viewingAs);
 </script>
 
 {#if branches}
 	<div class="wrapper">
 		{#if $user}
-			<input
-				type="text"
-				disabled
-				class="form-control"
-				value={$user.first_name + ' ' + $user.last_name}
-			/>
+			<select name="" id="" class="form-control" bind:value={$viewingAs}>
+				<option value={$user}>{$user.first_name + ' ' + $user.last_name} (me)</option>
+				{#each $user.received_permissions as grant}
+					<option value={grant.granter}
+						>{grant.granter.first_name + ' ' + grant.granter.last_name}</option
+					>
+				{/each}
+			</select>
 		{/if}
 		<div class="flex" class:to-save={saving === -1}>
 			<div class="flex-50 branch-selector">

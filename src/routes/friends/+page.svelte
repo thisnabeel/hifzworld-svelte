@@ -3,10 +3,38 @@
 	import API from '$lib/api/api';
 	import { debounce } from '$lib/functions/debounceBasic';
 	import { user } from '$lib/stores/user';
+	import { onMount } from 'svelte';
 
 	let emailInput;
 	let searching = false;
 	let searchResults = [];
+
+	onMount(() => {
+		getList();
+	});
+
+	async function getList() {
+		const list = await API.get(`/user_grants/?email=${$user.email}`);
+		console.log(list);
+		console.log(list.granted_permissions);
+		user.set({
+			...$user,
+			granted_permissions: list.granted_permissions,
+			received_permissions: list.received_permissions
+		});
+	}
+
+	$: console.log($user);
+
+	async function grantAccess(email) {
+		const res = await API.post('/user_grants/', {
+			granter_email: $user.email,
+			grantee_email: email,
+			access_type: 'full'
+		});
+
+		user.set({ ...$user, granted_permsissions: [...($user.granted_permissions || []), res] });
+	}
 
 	const searchByEmail = debounce(async () => {
 		if (emailInput.includes('@')) {
@@ -47,7 +75,10 @@
 					{result.first_name}
 					{result.last_name}, {result.email}
 
-					<div class="btn btn-outline-primary pull-right">
+					<div
+						class="btn btn-outline-primary pull-right"
+						on:click={() => grantAccess(result.email)}
+					>
 						<i class="fa fa-plus" />
 					</div>
 				</li>
@@ -55,7 +86,28 @@
 		</div>
 	{/if}
 
-	<table class="table" />
+	{#if $user}
+		<div class="flex">
+			<div class="flex-50">
+				<h1>Granted Permissions</h1>
+				{#each $user.granted_permissions || [] as grant}
+					<li>
+						{grant.grantee.first_name}
+						{grant.grantee.last_name}
+					</li>
+				{/each}
+			</div>
+			<div class="flex-50">
+				<h1>Received Permissions</h1>
+				{#each $user.received_permissions || [] as grant}
+					<li>
+						{grant.granter.first_name}
+						{grant.granter.last_name}
+					</li>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>

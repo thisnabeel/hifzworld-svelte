@@ -1,4 +1,5 @@
 import { readable, writable } from 'svelte/store';
+import { user } from './user';
 
 // export const api = readable('http://localhost:3000');
 // export const api = readable('https://www.expressfeel.com');
@@ -13,6 +14,13 @@ export const current_page_number = writable(2);
 export const current_page = writable(null);
 export const showVerseRefSearcher = writable(false);
 export const showStats = writable(false);
+export const viewingAs = writable(null);
+
+user.subscribe((u) => {
+	if (u) {
+		viewingAs.set(u);
+	}
+});
 
 export const goHome = () => {
 	selectedExpression.set(null);
