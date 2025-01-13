@@ -6,6 +6,8 @@ import { user } from './user';
 
 export const user_segments = writable([]);
 export const showToc = writable(false);
+export const loading_branches = writable(false);
+export const loading_commits = writable(false);
 export const blind = writable(false);
 export const branch = writable(null);
 export const user_branch_pages = writable(null);

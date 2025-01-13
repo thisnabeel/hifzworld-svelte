@@ -11,7 +11,10 @@
 		user_branch_pages,
 		selected_user_page,
 		current_page_number,
-		current_page
+		current_page,
+		viewingAs,
+		loading_branches,
+		loading_commits
 	} from '$lib/stores/main';
 	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
 	import PageLister from '$lib/components/PageLister/Index.svelte';
@@ -96,18 +99,27 @@
 	// 		redrawCanvas();
 	// 	}
 	// });
+	branch.subscribe((payload) => {
+		fetchUserPage();
+	});
 	async function fetchUserPage() {
+		if (!$current_page) return;
+		loading_commits.set(true);
 		console.log('FETCHING USER');
 		const user_pages = await API.get(
-			`/users/${$user.id}/pages/${$current_page.id}/branch/${$branch.id}`
+			`/users/${$viewingAs.id}/pages/${$current_page.id}/branch/${$branch.id}`
 		);
 		if (user_pages) {
 			console.log({ user_pages });
 			user_branch_pages.set(user_pages);
 			selected_user_page.set(user_pages[0]);
 		} else {
+			console.log({ user_pages });
 			console.log('not found');
+			user_branch_pages.set(user_pages);
+			selected_user_page.set(null);
 		}
+		loading_commits.set(false);
 	}
 
 	selected_user_page.subscribe((p) => {
@@ -117,6 +129,9 @@
 				redrawCanvas();
 			}
 			saving = 1;
+		} else {
+			drawnPaths = [];
+			redrawCanvas();
 		}
 	});
 
@@ -561,7 +576,7 @@
 			drawn_paths: drawn_payload.length > 0 ? drawn_payload : null,
 			mushaf_page: $current_page.id,
 			branch: $branch.id,
-			user: $user.id
+			user: $viewingAs.id
 		};
 
 		const res = await API.post(`/user_pages`, hash);
