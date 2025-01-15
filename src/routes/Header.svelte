@@ -22,11 +22,16 @@
 		<svg viewBox="0 0 2 3" aria-hidden="true">
 			<path d="M0,0 L1,2 C1.5,3 1.5,3 2,3 L2,0 Z" />
 		</svg>
-		<ul>
+		<ul
+			class:home={$page.url.pathname === '/' || $page.url.pathname === ''}
+			class:no-home={$page.url.pathname !== '/'}
+		>
 			<!-- <li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
 				<a href="/">Home</a>
 			</li> -->
-			<a href="#" on:click={() => goto('/')}><i class="fa fa-home" /></a>
+			{#if $page.url.pathname !== '/'}
+				<a href="#" on:click={() => goto('/')}><i class="fa fa-home" /></a>
+			{/if}
 			{#if $user}
 				<li aria-current={$page.url.pathname === '/about' ? 'page' : undefined}>
 					<a on:click={() => goto('/about')} href="#"><i class="fa fa-question-circle" /></a>
@@ -152,5 +157,16 @@
 
 	a:hover {
 		color: var(--color-theme-1);
+	}
+
+	.no-home .fa {
+		font-size: 18px;
+		margin-top: 12px;
+		color: #bc9290;
+	}
+	.home .fa {
+		font-size: 24px;
+		margin-top: 10px;
+		color: #bc9290;
 	}
 </style>
