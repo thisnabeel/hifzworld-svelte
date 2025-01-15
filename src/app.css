@@ -13,8 +13,14 @@
 .btn-block {
 	display: block;
 }
+.flex-40 {
+	flex: 1 1 40%;
+}
 .flex-50 {
 	flex: 1 1 50%;
+}
+.flex-60 {
+	flex: 1 1 60%;
 }
 h1,
 h2,

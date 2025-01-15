@@ -85,7 +85,7 @@
 	/>
 
 	<i
-		class="fa fa-bars progress-nav interact"
+		class="fa fa-bar-chart progress-nav interact"
 		on:click={() => {
 			showProgressNav = true;
 			tocDisabled = false;

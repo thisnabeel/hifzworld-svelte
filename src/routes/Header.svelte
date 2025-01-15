@@ -44,10 +44,6 @@
 					<a on:click={() => goto('/friends')} href="#"><i class="fa fa-users" /></a>
 				</li>
 
-				<li>
-					<a on:click={() => showStats.set(true)} href="#"><i class="fa fa-bar-chart" /></a>
-				</li>
-
 				{#if $user}
 					<!-- <li>
 						<a href="#" on:click={() => user.set(null)}>
