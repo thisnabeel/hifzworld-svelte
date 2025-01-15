@@ -4,6 +4,21 @@
 	import thirteen_liner from '$lib/functions/thirteen_liner';
 	import { user } from '$lib/stores/user';
 	import save from '$lib/functions/debounce';
+	import {
+		blind,
+		user_segments,
+		branch,
+		user_branch_pages,
+		selected_user_page,
+		current_page_number,
+		current_page,
+		viewingAs,
+		loading_branches,
+		loading_commits
+	} from '$lib/stores/main';
+	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
+	import PageLister from '$lib/components/PageLister/Index.svelte';
+	let unsubscribe;
 
 	let imageSrc = null;
 	let canvas;
@@ -22,51 +37,110 @@
 	let highlightTransparency = 0.3; // Adjust the value as needed
 	let highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`;
 
-	export let pageNumber;
+	let saving = -1;
 
 	let touchId; // To track the touch ID for drawing
 	let touchPos; // To store the touch position
 	let clickStartY = null; // Variable to store the x-coordinate where the click started
 
-	let page;
-
 	onMount(() => {
-		if ($user) {
-			// getImageSrc();
-			if (pageNumber) {
-				getPage();
-			}
+		// if ($user) {
+		// 	if ($current_page_number) {
+		// 		getPage();
+		// 	}
+		// }
+
+		if (!canvas) {
+			console.error('Canvas element not found');
+			return;
 		}
+
+		context = canvas.getContext('2d');
+		if (!context) {
+			console.error('Failed to initialize canvas context');
+			return;
+		}
+
+		console.log('Canvas and context are ready');
+
+		unsubscribe = current_page_number.subscribe((p) => {
+			console.log('got ', p);
+			getPage(p); // Handle the page retrieval
+		});
 	});
 
 	onDestroy(() => {
 		closePage();
-	});
 
-	$: getPage(pageNumber);
+		// Unsubscribe from current_page_number
+		if (unsubscribe) {
+			unsubscribe();
+		}
+	});
+	// $: getPage($current_page_number);
+
+	async function updatePageRef() {
+		await API.put(`/mushaf_pages/${$current_page.id}/`, {
+			mushaf: $current_page.mushaf,
+			verse_ref_start: $current_page.verse_ref_start,
+			verse_ref_end: $current_page.verse_ref_end
+		});
+	}
 
 	async function getImageSrc() {
-		page = await API.get(`/mushafs/1/pages/${pageNumber}`);
-		console.log({ page });
-		imageSrc = page.image_s3_url;
+		current_page.set(await API.get(`/mushafs/1/pages/${$current_page_number}`));
+		console.log($current_page);
+		imageSrc = $current_page.image_s3_url;
 		beginPage();
 	}
 
+	// blind.subscribe((payload) => {
+	// 	if (page && user_page && payload) {
+	// 		redrawCanvas();
+	// 	}
+	// });
+	branch.subscribe((payload) => {
+		fetchUserPage();
+	});
 	async function fetchUserPage() {
+		if (!$current_page) return;
+		loading_commits.set(true);
 		console.log('FETCHING USER');
-		const user_page = await API.get(`/users/${$user.id}/pages/${page.id}`);
-		if (user_page) {
-			console.log({ user_page });
-			if (user_page.drawn_paths) {
-				drawnPaths = user_page.drawn_paths;
-				redrawCanvas();
-			}
+		const user_pages = await API.get(
+			`/users/${$viewingAs.id}/pages/${$current_page.id}/branch/${$branch.id}`
+		);
+		if (user_pages) {
+			console.log({ user_pages });
+			user_branch_pages.set(user_pages);
+			selected_user_page.set(user_pages[0]);
 		} else {
+			console.log({ user_pages });
 			console.log('not found');
+			user_branch_pages.set(user_pages);
+			selected_user_page.set(null);
 		}
+		loading_commits.set(false);
 	}
 
+	selected_user_page.subscribe((p) => {
+		if (p) {
+			if (p.drawn_paths) {
+				drawnPaths = p.drawn_paths;
+				redrawCanvas();
+			}
+			saving = 1;
+		} else {
+			drawnPaths = [];
+			redrawCanvas();
+		}
+	});
+
 	function beginPage() {
+		if (!canvas) {
+			console.error('Canvas element not found');
+			return;
+		}
+
 		img = new Image();
 		img.src = imageSrc;
 
@@ -114,9 +188,11 @@
 	function closePage() {
 		if (typeof document !== 'undefined') {
 			// document.removeEventListener('click', handleDebugClick);
-			canvas.removeEventListener('touchstart', handleTouchStart);
-			canvas.removeEventListener('touchmove', handleTouchMove);
-			canvas.removeEventListener('touchend', handleTouchEnd);
+			if (canvas) {
+				canvas.removeEventListener('touchstart', handleTouchStart);
+				canvas.removeEventListener('touchmove', handleTouchMove);
+				canvas.removeEventListener('touchend', handleTouchEnd);
+			}
 		}
 		drawnPaths = [];
 	}
@@ -156,7 +232,7 @@
 		const scaleY = canvas.height / rect.height;
 
 		let scrollPosition = 0;
-		console.log({ scrollPosition });
+		// console.log({ scrollPosition });
 		if (window.innerWidth < 768) {
 			scrollPosition = window.scrollY;
 		}
@@ -181,7 +257,7 @@
 
 	async function getPage(trigger) {
 		closePage();
-		getImageSrc(pageNumber);
+		getImageSrc($current_page_number);
 	}
 
 	function getMousePos(event) {
@@ -204,19 +280,19 @@
 	function handleBrushStart(pos) {
 		// console.log({ positionExists });
 		clickStartY = pos.y;
-		console.log('startY', pos.y);
+		// console.log('startY', pos.y);
 		drawnPaths.push([{ x: pos.x, y: pos.y, color: highlightColor }]); // Default color is yellow
 	}
 
 	function handleBrushMove(pos) {
 		// Check if the specified position exists in drawnPaths
 		const positionExists = doesPosExistInDrawnPaths(pos);
-		console.log(pos);
+		// console.log(pos);
 
 		// If debugMode is enabled and the position exists, log the message and return
 		if (debugMode) {
 			if (positionExists) {
-				console.log('Position exists in drawnPaths:', pos);
+				// console.log('Position exists in drawnPaths:', pos);
 				removePointFromDrawnPaths(pos);
 			}
 
@@ -229,7 +305,7 @@
 			y: clickStartY,
 			color: highlightColor
 		});
-
+		saving = -1;
 		redrawCanvas();
 	}
 
@@ -285,7 +361,7 @@
 		// Update the drawnPaths variable with the new array
 
 		drawnPaths = newDrawnPaths;
-		console.log(drawnPaths.map((p) => p.length));
+		// console.log(drawnPaths.map((p) => p.length));
 
 		redrawCanvas();
 	}
@@ -342,13 +418,13 @@
 				const distToSegment = getDistanceToSegment(mousePos, start, end);
 
 				if (distToSegment < clickThreshold) {
-					console.log('Clicked on drawn path:', i);
+					// console.log('Clicked on drawn path:', i);
 					return i;
 				}
 			}
 		}
 
-		console.log('No path found');
+		// console.log('No path found');
 		return -1;
 	}
 
@@ -424,6 +500,11 @@
 	}
 
 	function redrawCanvas() {
+		if (!canvas || !context) {
+			console.warn('Canvas or context is not initialized yet.');
+			return;
+		}
+		console.log('Context Initialized');
 		context.clearRect(0, 0, canvas.width, canvas.height);
 		context.drawImage(img, 0, 0, img.width, img.height);
 
@@ -435,7 +516,11 @@
 					context.moveTo(path[0].x, path[0].y);
 					path.forEach((point) => {
 						context.lineTo(point.x, point.y);
-						context.strokeStyle = point.color;
+						if ($blind) {
+							context.strokeStyle = 'rgba(0,0,0, 1)';
+						} else {
+							context.strokeStyle = point.color;
+						}
 					});
 					context.lineWidth = 38;
 					context.lineCap = 'round';
@@ -478,18 +563,28 @@
 			// Step 5: Reset the global composite operation to the default
 			context.globalCompositeOperation = 'source-over';
 		}
+
+		// console.log({ drawnPaths });
 	}
 	async function saveDrawingToDatabase() {
 		// Now, you can save `drawingData` to your database
 		// console.log();
+		saving = 0;
+		const drawn_payload = drawnPaths.filter((a) => a.length > 0);
+
 		const hash = {
-			drawn_paths: drawnPaths,
-			mushaf_page_id: page.id,
-			user_id: $user.id
+			drawn_paths: drawn_payload.length > 0 ? drawn_payload : null,
+			mushaf_page: $current_page.id,
+			branch: $branch.id,
+			user: $viewingAs.id
 		};
 
-		const res = await API.post(`user_pages`, hash);
+		const res = await API.post(`/user_pages`, hash);
 		console.log({ res });
+		saving = 1;
+
+		user_branch_pages.set([res, ...$user_branch_pages]);
+		selected_user_page.set(res);
 		// console.log(getAllCoordinates());
 		// const bounds = canvas.getBoundingClientRect();
 		// console.log({ bounds });
@@ -518,9 +613,25 @@
 		}
 		return points;
 	}
+
+	async function quiz() {
+		if ($user_segments.length < 1) {
+			const segments = await API.get('/users/' + $user.id + '/progress');
+			user_segments.set(segments);
+		}
+		const user_segment = $user_segments[Math.floor(Math.random() * $user_segments.length)];
+		// selectPage(user_segment.page_number);
+		current_page_number.set(user_segment.page_number);
+		getPage();
+		// console.log({ $user_segments });
+		// console.log({ user_segment });
+	}
 </script>
 
+<BranchesHeader {saveDrawingToDatabase} {saving} />
+
 <div class="canvas-container">
+	<!-- <PageLister /> -->
 	<canvas
 		bind:this={canvas}
 		on:mousedown={handleMouseDown}
@@ -533,8 +644,18 @@
 	<br />
 	<!-- <button on:click={undo}>Undo</button>
         <button on:click={redo}>Redo</button> -->
-	<button on:click={toggleDebugMode} class="btn {debugMode ? 'btn-warning' : 'btn-success'}"
-		><i class="fa {debugMode ? 'fa-eraser' : 'fa-pen'}" /></button
+	<button
+		on:click={() => {
+			blind.set(!$blind);
+			redrawCanvas();
+		}}
+		class="btn"><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
+	>
+	<button on:click={() => (debugMode = false)} class="btn {debugMode ? '' : 'btn-success'}"
+		><i class="fa fa-pen" /></button
+	>
+	<button on:click={() => (debugMode = true)} class="btn {debugMode ? 'btn-warning' : ''}"
+		><i class="fa fa-eraser" /></button
 	>
 	<!-- <button
 		on:click={() => {
@@ -553,17 +674,76 @@
 		class="btn">Invert</button
 	>
 
+	<!-- <button
+		class="btn btn-outline-info"
+		class:btn-primary={saving == -1}
+		class:btn-info={saving == 0}
+		class:btn-success={saving == 1}
+		on:click={saveDrawingToDatabase}
+	>
+		{#if saving === -1}
+			<i class="fa fa-save" /> ?
+		{:else if saving === 0}
+			Saving
+		{:else if saving === 1}
+			Saved
+		{/if}
+	</button> -->
+
+	{#if $user_branch_pages && $user_branch_pages.length > 0}
+		{#if saving === 0}
+			<button class="btn btn-outline-primary saving" style="background: #ccc">
+				<i class="fa fa-save" />
+			</button>
+		{:else}
+			<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
+				<i class="fa fa-save" />
+			</button>
+		{/if}
+	{:else if saving === 0}
+		<button class="btn btn-primary" on:click={() => {}}>Saving...</button>
+	{:else}
+		<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
+			No Commits Yet, Save?
+		</button>
+	{/if}
+
 	<input
 		type="number"
 		class="form-control text-center"
-		bind:value={pageNumber}
+		bind:value={$current_page_number}
 		on:change={getPage}
 	/>
+
+	{#if $current_page && $current_page.id && false}
+		<div class="row">
+			<div class="col-lg-6 col-md-6 col-sm-6">
+				<input
+					style="font-size: 20px;"
+					placeholder="Verse Start..."
+					type="text"
+					class="form-control"
+					on:change={() => updatePageRef()}
+					bind:value={$current_page.verse_ref_start}
+				/>
+			</div>
+			<div class="col-lg-6 col-md-6 col-sm-6">
+				<input
+					on:change={() => updatePageRef()}
+					bind:value={$current_page.verse_ref_end}
+					style="font-size: 20px;"
+					placeholder="Verse End..."
+					type="text"
+					class="form-control"
+				/>
+			</div>
+		</div>
+	{/if}
 	<div class="movePage flex">
 		<span
 			class="btn btn-info"
 			on:click={() => {
-				pageNumber = pageNumber + 1;
+				current_page_number.set($current_page_number + 1);
 				getPage();
 			}}><i class="fa fa-arrow-left" /></span
 		>
@@ -571,22 +751,26 @@
 		<span
 			class="btn btn-info"
 			on:click={() => {
-				if (pageNumber < 3) return;
-				pageNumber = pageNumber - 1;
+				if ($current_page_number < 3) return;
+				current_page_number.set($current_page_number - 1);
 				getPage();
 			}}><i class="fa fa-arrow-right" /></span
 		>
 	</div>
-	<div class="colors">
-		<div
-			class="yellow"
-			on:click={() => (highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`)}
-		/>
-		<!-- <div class="black" on:click={() => (highlightColor = `rgba(52, 73, 94,1.0)`)} /> -->
-		<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
-	</div>
+	{#if false}
+		<div class="colors">
+			<div
+				class="yellow"
+				on:click={() => (highlightColor = `rgba(255, 255, 0, ${highlightTransparency})`)}
+			/>
+			<!-- <div class="black" on:click={() => (highlightColor = `rgba(52, 73, 94,1.0)`)} /> -->
+			<div class="transparent" on:click={() => (highlightColor = `rgba(255, 255, 255,1.0)`)} />
+		</div>
+	{/if}
 
-	<button on:click={saveDrawingToDatabase}>Save Page</button>
+	<!-- <button class="btn btn-outline-info quiz" on:click={quiz}>
+		<i class="fa fa-refresh" />
+	</button> -->
 
 	<br />
 	<!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -603,6 +787,7 @@
 		align-items: center;
 		height: auto; /* Set the height of the parent div to the full viewport height */
 		margin: 0; /* Remove default margin to avoid unnecessary spacing */
+		position: relative;
 	}
 
 	canvas {
@@ -649,5 +834,19 @@
 	.controls input {
 		margin-top: 10px;
 		font-size: 40px;
+	}
+
+	.save-page {
+		position: fixed;
+		bottom: 10px;
+		right: 10px;
+		z-index: 9998;
+	}
+
+	.quiz {
+		position: fixed;
+		bottom: 50px;
+		right: 10px;
+		z-index: 9999;
 	}
 </style>

@@ -26,11 +26,13 @@
 	let isDrawing = false;
 	let undoStack = [];
 	let redoStack = [];
-	let debugMode = false;
+	// let debugMode = false;
 	let showPaths = true; // New variable to toggle path visibility
 	let drawnPaths = [];
 	let img; // Declare img as a global variable
 	let inverted = false;
+	let lastX = null;
+
 	// let highlightTransparency = 0.9; // Adjust the value as needed
 	// let highlightColor = `rgba(0, 0, 0, ${highlightTransparency})`;
 
@@ -215,17 +217,6 @@
 		}
 	}
 
-	function handleTouchEnd(event) {
-		const touch = getTouchById(event, touchId);
-		if (touch) {
-			if (isDrawing) {
-				// If drawing, save the path
-				isDrawing = false;
-				saveToUndoStack();
-			}
-		}
-	}
-
 	function getTouchPos(touch) {
 		const rect = canvas.getBoundingClientRect();
 		const scaleX = canvas.width / rect.width;
@@ -278,33 +269,29 @@
 	}
 
 	function handleBrushStart(pos) {
-		// console.log({ positionExists });
 		clickStartY = pos.y;
-		// console.log('startY', pos.y);
-		drawnPaths.push([{ x: pos.x, y: pos.y, color: highlightColor }]); // Default color is yellow
+		lastX = pos.x; // Store initial X position
+		drawnPaths.push([{ x: pos.x, y: pos.y, color: highlightColor }]);
 	}
 
 	function handleBrushMove(pos) {
-		// Check if the specified position exists in drawnPaths
-		const positionExists = doesPosExistInDrawnPaths(pos);
-		// console.log(pos);
+		if (lastX === null) return;
 
-		// If debugMode is enabled and the position exists, log the message and return
-		if (debugMode) {
-			if (positionExists) {
-				// console.log('Position exists in drawnPaths:', pos);
-				removePointFromDrawnPaths(pos);
-			}
+		const isMovingLeft = pos.x < lastX;
 
-			return;
+		if (isMovingLeft) {
+			// Drawing mode (right to left)
+			drawnPaths[drawnPaths.length - 1].push({
+				x: pos.x,
+				y: clickStartY,
+				color: highlightColor
+			});
+		} else {
+			// Erasing mode (left to right)
+			removePointFromDrawnPaths(pos);
 		}
 
-		// If the position doesn't exist, push the new position to drawnPaths
-		drawnPaths[drawnPaths.length - 1].push({
-			x: pos.x,
-			y: clickStartY,
-			color: highlightColor
-		});
+		lastX = pos.x;
 		saving = -1;
 		redrawCanvas();
 	}
@@ -369,7 +356,19 @@
 	function handleMouseUp() {
 		if (isDrawing) {
 			isDrawing = false;
+			lastX = null;
 			saveToUndoStack();
+		}
+	}
+
+	function handleTouchEnd(event) {
+		const touch = getTouchById(event, touchId);
+		if (touch) {
+			if (isDrawing) {
+				isDrawing = false;
+				lastX = null;
+				saveToUndoStack();
+			}
 		}
 	}
 
@@ -391,15 +390,6 @@
 				// Save the current path to the array
 				drawnPaths.push([]);
 			}
-		}
-	}
-
-	function toggleDebugMode() {
-		debugMode = !debugMode;
-		if (debugMode) {
-			document.addEventListener('click', handleDebugClick);
-		} else {
-			document.removeEventListener('click', handleDebugClick);
 		}
 	}
 
@@ -458,24 +448,6 @@
 	// Function to calculate the length of a vector
 	function getLength(vector) {
 		return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-	}
-
-	function handleDebugClick(event) {
-		return;
-		if (!debugMode) return;
-
-		event.preventDefault(); // Prevent the default click behavior
-
-		// Use the appropriate event coordinates based on the event type
-		const pos = event.type === 'click' ? getMousePos(event) : getTouchPos(event.changedTouches[0]);
-		clickedIndex = getClickedPathIndex(pos);
-
-		if (clickedIndex !== -1) {
-			console.log('Clicked on drawn path:', drawnPaths[clickedIndex]);
-			// Remove the clicked path
-			drawnPaths.splice(clickedIndex, 1);
-			redrawCanvas();
-		}
 	}
 
 	function findIntersectingPoints(pathIndex, mousePos) {
@@ -644,19 +616,51 @@
 	<br />
 	<!-- <button on:click={undo}>Undo</button>
         <button on:click={redo}>Redo</button> -->
-	<button
-		on:click={() => {
-			blind.set(!$blind);
-			redrawCanvas();
-		}}
-		class="btn"><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
-	>
-	<button on:click={() => (debugMode = false)} class="btn {debugMode ? '' : 'btn-success'}"
+	<div class="flex control-flex">
+		<div>
+			<button
+				on:click={() => {
+					blind.set(!$blind);
+					redrawCanvas();
+				}}
+				class="btn"><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
+			>
+			<button
+				on:click={() => {
+					inverted = !inverted;
+					console.log({ inverted });
+					redrawCanvas();
+				}}
+				class="btn">Invert</button
+			>
+		</div>
+		<div>
+			{#if $user_branch_pages && $user_branch_pages.length > 0}
+				{#if saving === 0}
+					<button class="btn btn-outline-primary saving" style="background: #ccc">
+						<i class="fa fa-save" />
+					</button>
+				{:else}
+					<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
+						<i class="fa fa-save" />
+					</button>
+				{/if}
+			{:else if saving === 0}
+				<button class="btn btn-primary" on:click={() => {}}>Saving...</button>
+			{:else}
+				<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
+					No Commits Yet, Save?
+				</button>
+			{/if}
+		</div>
+	</div>
+
+	<!-- <button on:click={() => (debugMode = false)} class="btn {debugMode ? '' : 'btn-success'}"
 		><i class="fa fa-pen" /></button
 	>
 	<button on:click={() => (debugMode = true)} class="btn {debugMode ? 'btn-warning' : ''}"
 		><i class="fa fa-eraser" /></button
-	>
+	> -->
 	<!-- <button
 		on:click={() => {
 			showPaths = !showPaths;
@@ -664,15 +668,6 @@
 		}}
 		class="btn"><i class="fa {showPaths ? 'fa-eye' : 'fa-eye-slash'}" /></button
 	> -->
-
-	<button
-		on:click={() => {
-			inverted = !inverted;
-			console.log({ inverted });
-			redrawCanvas();
-		}}
-		class="btn">Invert</button
-	>
 
 	<!-- <button
 		class="btn btn-outline-info"
@@ -689,24 +684,6 @@
 			Saved
 		{/if}
 	</button> -->
-
-	{#if $user_branch_pages && $user_branch_pages.length > 0}
-		{#if saving === 0}
-			<button class="btn btn-outline-primary saving" style="background: #ccc">
-				<i class="fa fa-save" />
-			</button>
-		{:else}
-			<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
-				<i class="fa fa-save" />
-			</button>
-		{/if}
-	{:else if saving === 0}
-		<button class="btn btn-primary" on:click={() => {}}>Saving...</button>
-	{:else}
-		<button class="btn btn-outline-primary" on:click={saveDrawingToDatabase}>
-			No Commits Yet, Save?
-		</button>
-	{/if}
 
 	<input
 		type="number"
@@ -780,6 +757,12 @@
 	/* canvas {
 		border: 1px solid #000;
 	} */
+
+	.control-flex {
+		justify-content: space-between;
+		max-width: 450px;
+		margin: 0 auto;
+	}
 
 	.canvas-container {
 		display: flex;
