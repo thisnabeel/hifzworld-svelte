@@ -27,8 +27,6 @@
 			showToc.set(false);
 			tocDisabled = false;
 		}, 400);
-
-		Swal.close();
 	}
 
 	async function getRandomMission() {
@@ -60,7 +58,8 @@
 		Swal.fire({
 			title: 'Shuffling Marked Pages...',
 			text: 'Please hold...',
-			showConfirmButton: false
+			showConfirmButton: false,
+			allowOutsideClick: false
 		});
 		const segment = await API.get(
 			'/users/' + $user.id + '/progress/random/' + $current_page_number
@@ -73,6 +72,8 @@
 		handleSelectPage(segment.mushaf_page.page_number);
 		// current_page_number.set(segment.mushaf_page.page_number);
 	}
+
+	$: console.log($user);
 </script>
 
 {#if $user}
@@ -98,7 +99,7 @@
 			goto('/');
 			getRandomProgress();
 		}}
-		>{#if $user.starting_verse_boundary && $user.ending_verse_boundary && $user.starting_verse_boundary.length > 0 && $user.ending_verse_boundary.length > 0}
+		>{#if $user.starting_verse_boundary && $user.ending_verse_boundary && $user.starting_verse_boundary > 0 && $user.ending_verse_boundary > 0}
 			<i class="fa fa-lock lock" />
 		{/if}</i
 	>

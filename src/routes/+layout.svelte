@@ -11,8 +11,12 @@
 	import { showVerseRefSearcher, showStats, viewingAs } from '$lib/stores/main';
 	import VerseSearch from '$lib/components/VerseSearch/Index.svelte';
 	import Stats from '$lib/components/Stats/Index.svelte';
+	import getTocList from '$lib/functions/getTocList';
 
-	user.subscribe((user) => console.log(user));
+	user.subscribe((user) => {
+		console.log(user);
+		getTocList();
+	});
 </script>
 
 <svelte:head>

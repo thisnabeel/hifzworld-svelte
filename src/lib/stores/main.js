@@ -17,6 +17,7 @@ export const current_page = writable(null);
 export const showVerseRefSearcher = writable(false);
 export const showStats = writable(false);
 export const viewingAs = writable(null);
+export const tocList = writable([]);
 
 user.subscribe((u) => {
 	if (u) {

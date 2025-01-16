@@ -1,23 +1,19 @@
 <script>
 	import API from '$lib/api/api';
-	import { showToc } from '$lib/stores/main';
+	import { showToc, tocList } from '$lib/stores/main';
 	import { onMount } from 'svelte';
+	import getTocList from '$lib/functions/getTocList';
 
 	export let selectPage;
 	export let tocDisabled;
 
 	onMount(() => {
-		getSurahs();
+		getTocList();
 	});
-
-	let segments = [];
-	async function getSurahs() {
-		segments = await API.get('/mushafs/' + 1 + '/surahs');
-	}
 </script>
 
 <ul class="clean-list toc" class:tocDisabled>
-	{#each segments as segment}
+	{#each $tocList as segment}
 		<li on:click={() => selectPage(segment.first_page)}>{segment.title}</li>
 	{/each}
 	<div

@@ -536,6 +536,9 @@
 			context.globalCompositeOperation = 'source-over';
 		}
 
+		setTimeout(() => {}, 6000);
+		Swal.close();
+
 		// console.log({ drawnPaths });
 	}
 	async function saveDrawingToDatabase() {

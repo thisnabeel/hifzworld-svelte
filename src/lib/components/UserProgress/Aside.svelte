@@ -3,10 +3,15 @@
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
 	import { user_segments } from '$lib/stores/main';
+	import Feed from './Feed.svelte';
+	import Grouped from './Grouped.svelte';
+	import { action } from 'svelte-modals';
 
 	export let selectPage;
 	export let tocDisabled;
 	export let close;
+
+	let tab = 'feed';
 
 	onMount(() => {
 		getUserProgress();
@@ -26,39 +31,52 @@
 </script>
 
 <ul class="clean-list toc" class:tocDisabled>
-	<div class="close" on:click={close}><i class="fa fa-times" /></div>
-	<h3>Progress:</h3>
-	{#each $user_segments as report}
-		<li
-			on:click={() => {
-				selectPage(report.mushaf_page.page_number);
-				close();
-			}}
-		>
-			<div class="report">
-				<div class="flex">
-					<div class="flex-40">
-						<div
-							class="markings"
-							class:hot={report.markings >= 3}
-							class:medium={report.markings < 3 && report.markings > 1}
-							class:mild={report.markings === 1}
-							class:good={report.markings === 0}
-						>
-							{report.markings}
-						</div>
-					</div>
-					<div class="flex-60">
-						<div class="title" style="direction:rtl">{report.title}</div>
-					</div>
+	<div>
+		<div>
+			<h3>Progress:</h3>
+			<div class="tabs flex">
+				<div class="flex-50" on:click={() => (tab = 'feed')} class:active={tab === 'feed'}>
+					Feed
 				</div>
-				<div class="last_touched">{report.last_touched}</div>
+				<div class="flex-50" on:click={() => (tab = 'grouped')} class:active={tab === 'grouped'}>
+					Grouped
+				</div>
 			</div>
-		</li>
-	{/each}
+		</div>
+	</div>
+	<div class="close" on:click={close}><i class="fa fa-times" /></div>
+	<hr />
+
+	{#if tab === 'feed'}
+		<Feed selectPage={(payload) => selectPage(payload)} />
+	{/if}
+	{#if tab === 'grouped'}
+		<Grouped selectPage={(payload) => selectPage(payload)} />
+	{/if}
 </ul>
 
 <style>
+	.toc h3 {
+		text-align: left;
+	}
+	.tabs {
+		text-align: center;
+	}
+
+	.tabs .active {
+		background-color: #000;
+		color: #fff;
+	}
+	.flex {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.close {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+	}
 	.title {
 		direction: rtl;
 		text-align: right;
@@ -106,9 +124,10 @@
 		overflow-y: scroll;
 		width: 250px;
 		text-align: right;
-		padding: 40px;
+		padding: 6px;
 		background-color: #fff;
 		border-right: 1px solid #000;
+		z-index: 999;
 	}
 
 	.toc li {
@@ -128,7 +147,9 @@
 		.toc {
 			width: 100vw;
 			z-index: 9999;
+			padding: 20px;
 		}
+
 		.title {
 			font-size: 32px;
 		}
