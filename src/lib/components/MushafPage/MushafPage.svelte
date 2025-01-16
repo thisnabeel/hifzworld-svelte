@@ -14,7 +14,8 @@
 		current_page,
 		viewingAs,
 		loading_branches,
-		loading_commits
+		loading_commits,
+		showToc
 	} from '$lib/stores/main';
 	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
 	import PageLister from '$lib/components/PageLister/Index.svelte';
@@ -538,6 +539,7 @@
 
 		setTimeout(() => {}, 6000);
 		Swal.close();
+		showToc.set(false);
 
 		// console.log({ drawnPaths });
 	}

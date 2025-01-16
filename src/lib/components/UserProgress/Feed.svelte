@@ -8,7 +8,6 @@
 	<li
 		on:click={() => {
 			selectPage(report.mushaf_page.page_number);
-			close();
 		}}
 	>
 		<div class="report">

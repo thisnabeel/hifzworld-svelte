@@ -2,7 +2,7 @@
 	import MushafPage from '$lib/components/MushafPage/MushafPage.svelte';
 	import Toc from '$lib/components/Toc/Toc.svelte';
 	import { user } from '$lib/stores/user';
-	import { showToc } from '$lib/stores/main';
+	import { showToc, showProgressNav } from '$lib/stores/main';
 	import { openModal } from 'svelte-modals';
 	import PopQuizModal from '../Modals/PopQuizModal.svelte';
 	import Landing from '$lib/components/Landing/Index.svelte';
@@ -13,7 +13,6 @@
 
 	import fetchPageByVerse from '$lib/functions/fetchPageByVerse';
 
-	let showProgressNav = false;
 	// Math.floor(Math.random() * (799 - 2 + 1)) + 2;
 	let pageNumber = 2;
 	let tocDisabled = false;
@@ -24,7 +23,7 @@
 		// pageNumber = page;
 		current_page_number.set(page);
 		setTimeout(function () {
-			showToc.set(false);
+			showProgressNav.set(false);
 			tocDisabled = false;
 		}, 400);
 	}
@@ -88,7 +87,7 @@
 	<i
 		class="fa fa-bar-chart progress-nav interact"
 		on:click={() => {
-			showProgressNav = true;
+			showProgressNav.set(true);
 			tocDisabled = false;
 		}}
 	/>
@@ -112,8 +111,8 @@
 	/>
 {/if}
 
-{#if showProgressNav}
-	<Aside selectPage={handleSelectPage} {tocDisabled} close={() => (showProgressNav = false)} />
+{#if $showProgressNav}
+	<Aside selectPage={handleSelectPage} {tocDisabled} close={() => showProgressNav.set(false)} />
 {/if}
 
 {#if $showToc}

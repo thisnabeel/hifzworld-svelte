@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/stores';
 	import setUserBoundary from '$lib/functions/setUserBoundary';
+	import { showToc } from '$lib/stores/main';
 	import { user } from '$lib/stores/user';
 
 	export let group;
@@ -62,7 +63,6 @@
 					class="page"
 					on:click={() => {
 						selectPage(page.mushaf_page.page_number);
-						close();
 					}}
 				>
 					<h1>
