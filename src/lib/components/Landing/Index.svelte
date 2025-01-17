@@ -40,15 +40,14 @@
 		<li>Test each other</li>
 	</ul>
 
-	<p>
-		We are launching real soon, sign up to get notified. <br />It helps us also to know how many
-		people are interested.
-	</p>
-
-	<input bind:value={email} type="text" placeholder="Enter Email Here..." />
-
-	<div on:click={submitForm} class="btn btn-outline-primary btn-block">Submit</div>
-
+	<div class="flex">
+		<div class="flex-50">
+			<div class="btn btn-block btn-warning" on:click={() => goto('/users/sign_in')}>Sign Up</div>
+		</div>
+		<div class="flex-50">
+			<div class="btn btn-block btn-primary" on:click={() => goto('/users/sign_in')}>Sign In</div>
+		</div>
+	</div>
 	<br /><br />
 	<h3>Wasalams</h3>
 	<h3>- <span on:click={() => goto('/users/sign_in')}>Nabeel</span> from Fremont, CA</h3>
