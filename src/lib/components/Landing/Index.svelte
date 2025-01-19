@@ -51,28 +51,43 @@
 	];
 </script>
 
+<svelte:head>
+	<meta
+		name="viewport"
+		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+	/>
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="mobile-web-app-capable" content="yes" />
+</svelte:head>
+
 <div class="wrapper">
-	<picture class="logo">
-		<img src="/logo.png" alt="harpoonium Logo" />
-	</picture>
+	<div class="mains">
+		<div class="left-main">
+			<picture class="logo">
+				<img src="/logo.png" alt="harpoonium Logo" />
+			</picture>
 
-	<h1>Salaams,</h1>
-	<h3>Welcome to Hifz.World</h3>
+			<h1>Salaams,</h1>
+			<h3>Welcome to Hifz.World</h3>
+			<p>An App by a Hafiz, for a Hafiz, so you can...</p>
+		</div>
 
-	<p>An App by a Hafiz, for a Hafiz, so that you can...</p>
+		<div class="right-main">
+			<div class="gifs">
+				{#if browser}
+					<Carousel bind:this={carousel} autoplay autoplayDuration={5000} autoplayProgressVisible>
+						{#each gifs as gif}
+							<div class="gif">
+								<h2>{gif.title}</h2>
 
-	{#if browser}
-		<Carousel bind:this={carousel} autoplay autoplayDuration={5000} autoplayProgressVisible>
-			{#each gifs as gif}
-				<div class="gif">
-					<img src={gif.url} alt="" />
-					<br /><br />
-					<h2>{gif.title}</h2>
-					<br />
-				</div>
-			{/each}
-		</Carousel>
-	{/if}
+								<img src={gif.url} alt="" />
+							</div>
+						{/each}
+					</Carousel>
+				{/if}
+			</div>
+		</div>
+	</div>
 
 	<div class="flex">
 		<div class="flex-50">
@@ -126,7 +141,36 @@
 		box-sizing: border-box;
 	}
 
-	.gif {
-		max-width: 350px;
+	.gif img {
+		max-width: 150px;
+	}
+
+	.gifs {
+		max-width: 300px;
+	}
+
+	.mains {
+		display: flex;
+	}
+
+	.mains > div {
+		flex: 1 1 50%;
+	}
+
+	@media (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
+		.mains {
+			display: block;
+		}
+		.gif img {
+			max-width: 100%;
+		}
+
+		.gifs {
+			max-width: 80vw;
+		}
+
+		.btn {
+			font-size: 34px;
+		}
 	}
 </style>
