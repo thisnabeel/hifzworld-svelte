@@ -9,7 +9,7 @@
 		loading_commits
 	} from '$lib/stores/main';
 	import { user } from '$lib/stores/user';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 
 	let branches;
 	export let saveDrawingToDatabase;
@@ -17,15 +17,31 @@
 
 	$: console.log('saving', saving);
 
-	viewingAs.subscribe((payload) => {
-		console.log('viewing as', payload.id);
+	let previousViewingAs = null; // Store the previous value
+
+	const unsubscribeViewingAs = viewingAs.subscribe((payload) => {
+		console.log('viewing as changed to', payload.id);
 		getBranches(payload);
 	});
+
+	// Ensure to unsubscribe when component is destroyed
+	onDestroy(() => {
+		unsubscribeViewingAs();
+	});
+
+	// function handleViewingAsChange(event) {
+	// 	const newValue = event.target.value;
+	// 	if ($viewingAs.id !== newValue) {
+	// 		viewingAs.set(newValue);
+	// 		console.log('viewing as changed to', newValue);
+	// 		getBranches(newValue);
+	// 	}
+	// }
 
 	async function getBranches(payload) {
 		loading_branches.set(true);
 		branches = await API.get('/branches/' + payload.id + '/');
-		console.log(branches);
+		console.log(`${payload.email}`, branches);
 		console.log(branches[0]);
 		branch.set(branches[0]);
 		loading_branches.set(false);
@@ -46,6 +62,7 @@
 				{/each}
 			</select>
 		{/if}
+
 		<div class="flex" class:to-save={saving === -1}>
 			{#if $loading_branches}
 				<div class="btn btn-block btn-warning" style="display: block; width: 100%;">

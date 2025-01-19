@@ -46,13 +46,11 @@
 	let touchPos; // To store the touch position
 	let clickStartY = null; // Variable to store the x-coordinate where the click started
 
-	onMount(() => {
-		// if ($user) {
-		// 	if ($current_page_number) {
-		// 		getPage();
-		// 	}
-		// }
+	branch.subscribe((payload) => {
+		fetchUserPage();
+	});
 
+	onMount(() => {
 		if (!canvas) {
 			console.error('Canvas element not found');
 			return;
@@ -97,14 +95,6 @@
 		beginPage();
 	}
 
-	// blind.subscribe((payload) => {
-	// 	if (page && user_page && payload) {
-	// 		redrawCanvas();
-	// 	}
-	// });
-	branch.subscribe((payload) => {
-		fetchUserPage();
-	});
 	async function fetchUserPage() {
 		if (!$current_page) return;
 		loading_commits.set(true);
@@ -138,32 +128,23 @@
 		}
 	});
 
-	function beginPage() {
-		if (!canvas) {
-			console.error('Canvas element not found');
-			return;
-		}
+	let imageLoaded = false;
 
+	function beginPage() {
+		imageLoaded = false;
 		img = new Image();
 		img.src = imageSrc;
 
 		img.onload = () => {
+			imageLoaded = true;
 			canvas.width = img.width;
 			canvas.height = img.height;
 			context = canvas.getContext('2d');
 			context.drawImage(img, 0, 0, img.width, img.height);
 			saveToUndoStack();
 			fetchUserPage();
+			redrawCanvas();
 		};
-
-		// Setup the event listener when the component is mounted
-		if (typeof document !== 'undefined') {
-			// document.addEventListener('click', handleDebugClick);
-			canvas.addEventListener('touchstart', handleTouchStart);
-			canvas.addEventListener('touchmove', handleTouchMove);
-			canvas.addEventListener('touchend', handleTouchEnd);
-			adjustCanvasSize(); // Call the function to adjust canvas size on mount
-		}
 	}
 
 	function adjustCanvasSize() {
@@ -473,15 +454,15 @@
 	}
 
 	function redrawCanvas() {
-		if (!canvas || !context) {
-			console.warn('Canvas or context is not initialized yet.');
+		if (!canvas || !context || !imageLoaded) {
+			console.warn('Canvas or context not initialized or image not loaded.');
 			return;
 		}
-		console.log('Context Initialized');
+		console.log('Redrawing canvas');
 		context.clearRect(0, 0, canvas.width, canvas.height);
 		context.drawImage(img, 0, 0, img.width, img.height);
 
-		// Draw paths only if showPaths is true
+		// Draw paths if they exist
 		if (!inverted) {
 			drawnPaths.forEach((path) => {
 				if (path.length > 1) {
@@ -489,11 +470,7 @@
 					context.moveTo(path[0].x, path[0].y);
 					path.forEach((point) => {
 						context.lineTo(point.x, point.y);
-						if ($blind) {
-							context.strokeStyle = 'rgba(0,0,0, 1)';
-						} else {
-							context.strokeStyle = point.color;
-						}
+						context.strokeStyle = $blind ? 'rgba(0,0,0, 1)' : point.color;
 					});
 					context.lineWidth = 38;
 					context.lineCap = 'round';
@@ -503,46 +480,9 @@
 			});
 		}
 
-		if (inverted) {
-			const maskCanvas = document.createElement('canvas');
-			const maskContext = maskCanvas.getContext('2d');
-
-			// Set the dimensions of the mask canvas
-			maskCanvas.width = img.width;
-			maskCanvas.height = img.height;
-
-			// Step 2: Draw the inverted paths on the masking layer
-			maskContext.lineWidth = 38;
-			maskContext.lineCap = 'round';
-			maskContext.lineJoin = 'round';
-
-			drawnPaths.forEach((path) => {
-				if (path.length > 1) {
-					maskContext.beginPath();
-					maskContext.moveTo(path[0].x, path[0].y);
-					path.forEach((point) => {
-						maskContext.lineTo(point.x, point.y);
-					});
-					maskContext.stroke();
-				}
-			});
-
-			// Step 3: Set the global composite operation to "destination-out"
-			context.globalCompositeOperation = 'destination-in';
-
-			// Step 4: Draw the masking layer on the main canvas
-			context.drawImage(maskCanvas, 0, 0);
-
-			// Step 5: Reset the global composite operation to the default
-			context.globalCompositeOperation = 'source-over';
-		}
-
-		setTimeout(() => {}, 6000);
 		Swal.close();
-		showToc.set(false);
-
-		// console.log({ drawnPaths });
 	}
+
 	async function saveDrawingToDatabase() {
 		// Now, you can save `drawingData` to your database
 		// console.log();

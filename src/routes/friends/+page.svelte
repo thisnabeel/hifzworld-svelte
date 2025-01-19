@@ -24,7 +24,7 @@
 		});
 	}
 
-	$: console.log($user);
+	// $: console.log($user);
 
 	async function grantAccess(email) {
 		const res = await API.post('/user_grants/', {
@@ -55,7 +55,7 @@
 </script>
 
 <div class="wrapper">
-	<h1>Friends:</h1>
+	<h1>Access Granted:</h1>
 
 	<input
 		type="text"
@@ -90,6 +90,7 @@
 		<div class="flex">
 			<div class="flex-50">
 				<h1>Granted Permissions</h1>
+				<p>They can mark your mistakes</p>
 				{#each $user.granted_permissions || [] as grant}
 					<li>
 						{grant.grantee.first_name}
@@ -99,6 +100,7 @@
 			</div>
 			<div class="flex-50">
 				<h1>Received Permissions</h1>
+				<p>You can mark their mistakes</p>
 				{#each $user.received_permissions || [] as grant}
 					<li>
 						{grant.granter.first_name}

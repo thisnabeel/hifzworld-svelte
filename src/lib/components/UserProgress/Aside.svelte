@@ -12,12 +12,14 @@
 	export let close;
 
 	let tab = 'feed';
+	let loading = false;
 
 	onMount(() => {
 		getUserProgress();
 	});
 
 	async function getUserProgress() {
+		loading = true;
 		const segments = await API.get('/users/' + $user.id + '/progress_reports');
 		segments.sort((a, b) => {
 			if (a.markings !== b.markings) {
@@ -27,6 +29,7 @@
 		});
 		console.log(segments);
 		user_segments.set(segments);
+		loading = false;
 	}
 </script>
 
@@ -46,6 +49,13 @@
 	</div>
 	<div class="close" on:click={close}><i class="fa fa-times" /></div>
 	<hr />
+
+	{#if loading}
+		<div style="text-align: center;">
+			<img src="/spinner.svg" alt="" />
+			<p>Loading...</p>
+		</div>
+	{/if}
 
 	{#if tab === 'feed'}
 		<Feed selectPage={(payload) => selectPage(payload)} />
