@@ -69,11 +69,11 @@
 
 			<h1>Salaams,</h1>
 			<h3>Welcome to Hifz.World</h3>
-			<p>An App by a Hafiz, for a Hafiz, so you can...</p>
 		</div>
 
 		<div class="right-main">
 			<div class="gifs">
+				<p>An App by a Hafiz, for a Hafiz,<br /> so you can...</p>
 				{#if browser}
 					<Carousel bind:this={carousel} autoplay autoplayDuration={5000} autoplayProgressVisible>
 						{#each gifs as gif}
