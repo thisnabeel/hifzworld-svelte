@@ -8,5 +8,8 @@ export default defineConfig({
 	},
 	define: {
 		'process.env': process.env
+	},
+	optimizeDeps: {
+		include: ['lodash.get', 'lodash.isequal', 'lodash.clonedeep']
 	}
 });

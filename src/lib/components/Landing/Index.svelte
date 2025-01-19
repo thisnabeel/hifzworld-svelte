@@ -1,6 +1,14 @@
 <script>
 	import { goto } from '$app/navigation';
 	import API from '$lib/api/api';
+	import Carousel from 'svelte-carousel';
+	import { browser } from '$app/environment';
+
+	let carousel; // for calling methods of the carousel instance
+
+	const handleNextClick = () => {
+		carousel.goToNext();
+	};
 
 	let email = '';
 
@@ -14,6 +22,33 @@
 		alert('Thanks for Subscribing!');
 		email = '';
 	};
+
+	let gifs = [
+		{
+			url: '/gifs/hw-mark-mistake.gif',
+			title: 'Mark Your Mistakes'
+		},
+		{
+			url: '/gifs/hw-invert-mistakes.gif',
+			title: 'Hone in on your Mistakes'
+		},
+		{
+			url: '/gifs/hw-chapter-selector.gif',
+			title: 'Navigate Your Mushaf'
+		}
+		// {
+		// 	url: '',
+		// 	title: ''
+		// },
+		// {
+		// 	url: '',
+		// 	title: ''
+		// },
+		// {
+		// 	url: '',
+		// 	title: ''
+		// }
+	];
 </script>
 
 <div class="wrapper">
@@ -24,21 +59,20 @@
 	<h1>Salaams,</h1>
 	<h3>Welcome to Hifz.World</h3>
 
-	<p>We made this platform so that Huffaz could easily</p>
+	<p>An App by a Hafiz, for a Hafiz, so that you can...</p>
 
-	<ul>
-		<li>Track the Health of their Hifz</li>
-		<li>
-			Mark mistakes on their mushafs
-			<!-- <div
-				on:click={() => alert('Demo clicked')}
-				style="background: lightblue; display:inline-block; padding: 6px;"
-			>
-				Click to see Demo
-			</div> -->
-		</li>
-		<li>Test each other</li>
-	</ul>
+	{#if browser}
+		<Carousel bind:this={carousel} autoplay autoplayDuration={5000} autoplayProgressVisible>
+			{#each gifs as gif}
+				<div class="gif">
+					<img src={gif.url} alt="" />
+					<br /><br />
+					<h2>{gif.title}</h2>
+					<br />
+				</div>
+			{/each}
+		</Carousel>
+	{/if}
 
 	<div class="flex">
 		<div class="flex-50">
@@ -61,7 +95,7 @@
 	}
 
 	.logo img {
-		margin-top: 30px;
+		/* margin-top: 30px; */
 		max-width: 200px;
 	}
 
@@ -90,5 +124,9 @@
 		margin-top: 10px;
 		width: 100%;
 		box-sizing: border-box;
+	}
+
+	.gif {
+		max-width: 350px;
 	}
 </style>
