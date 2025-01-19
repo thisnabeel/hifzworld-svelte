@@ -67,7 +67,7 @@
 				<img src="/logo.png" alt="harpoonium Logo" />
 			</picture>
 
-			<h1>Salaams,</h1>
+			<h1>اَلسَّلَامُ عَلَيْكُمْ</h1>
 			<h3>Welcome to Hifz.World</h3>
 		</div>
 
@@ -98,7 +98,7 @@
 		</div>
 	</div>
 	<br /><br />
-	<h3>Wasalams</h3>
+	<h3>وعليكم السلام</h3>
 	<h3>- <span on:click={() => goto('/users/sign_in')}>Nabeel</span> from Fremont, CA</h3>
 </div>
 
