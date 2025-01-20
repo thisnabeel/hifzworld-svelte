@@ -1,4 +1,5 @@
 <script>
+	import { user } from '$lib/stores/user';
 	import { onMount, onDestroy } from 'svelte';
 
 	let localVideo;
@@ -11,14 +12,36 @@
 	let pendingCandidates = [];
 	let makingOffer = false;
 	let ignoreOffer = false;
+	let mediaError = null;
+	let isSafari = false;
+
+	// Reactive status for UI feedback
+	$: canStartCamera = connectionState === 'connected' && !mediaError;
+	$: canStartCall = localStream && connectionState === 'connected';
+	$: canEndCall = !!peerConnection;
+	$: statusMessage = mediaError
+		? `Error: ${mediaError.message}`
+		: getStatusMessage(connectionState);
 
 	const config = {
 		iceServers: [
 			{ urls: 'stun:stun.l.google.com:19302' },
 			{ urls: 'stun:stun1.l.google.com:19302' }
-		],
-		sdpSemantics: 'unified-plan'
+		]
 	};
+
+	function getStatusMessage(state) {
+		switch (state) {
+			case 'connected':
+				return 'Connected to server';
+			case 'disconnected':
+				return 'Disconnected from server';
+			case 'error':
+				return 'Connection error';
+			default:
+				return 'Initializing...';
+		}
+	}
 
 	function setupWebSocket() {
 		if (ws?.readyState === WebSocket.OPEN) return;
@@ -70,10 +93,16 @@
 		peerConnection.onnegotiationneeded = async () => {
 			try {
 				makingOffer = true;
-				await peerConnection.setLocalDescription();
+				// Create offer with specific options for Safari compatibility
+				const offer = await peerConnection.createOffer({
+					offerToReceiveAudio: true,
+					offerToReceiveVideo: true
+				});
+				await peerConnection.setLocalDescription(offer);
 				ws.send(JSON.stringify({ offer: peerConnection.localDescription }));
 			} catch (err) {
 				console.error(err);
+				mediaError = err;
 			} finally {
 				makingOffer = false;
 			}
@@ -88,6 +117,7 @@
 
 		// Handle ICE connection state
 		peerConnection.oniceconnectionstatechange = () => {
+			console.log('ICE connection state:', peerConnection.iceConnectionState);
 			if (peerConnection.iceConnectionState === 'failed') {
 				peerConnection.restartIce();
 			}
@@ -104,41 +134,75 @@
 	}
 
 	async function startLocalVideo() {
+		mediaError = null;
 		try {
 			if (localStream) {
 				localStream.getTracks().forEach((track) => track.stop());
 			}
 
-			localStream = await navigator.mediaDevices.getUserMedia({
-				video: true,
-				audio: true
-			});
+			// Check if mediaDevices is available
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+				throw new Error('Media devices not available in this browser');
+			}
 
-			if (localVideo) {
+			// Basic constraints that work across browsers
+			const constraints = {
+				video: {
+					width: { ideal: 1280 },
+					height: { ideal: 720 }
+				},
+				audio: true
+			};
+
+			// Request media access
+			localStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+			// Only set the video source if we have both the element and the stream
+			if (localVideo && localStream) {
 				localVideo.srcObject = localStream;
+
+				// For Safari: explicitly check readyState
+				if (localVideo.readyState >= 2) {
+					// HAVE_CURRENT_DATA or higher
+					await localVideo.play();
+				} else {
+					localVideo.onloadeddata = async () => {
+						try {
+							await localVideo.play();
+						} catch (e) {
+							console.log('Playback delayed:', e);
+						}
+					};
+				}
 			}
 		} catch (error) {
 			console.error('Error accessing media devices:', error);
-			throw error;
+			mediaError = error;
 		}
 	}
 
 	async function startCall() {
-		if (!ws || ws.readyState !== WebSocket.OPEN) {
-			throw new Error('WebSocket not connected');
+		mediaError = null;
+		try {
+			if (!ws || ws.readyState !== WebSocket.OPEN) {
+				throw new Error('WebSocket not connected');
+			}
+
+			if (!localStream) {
+				await startLocalVideo();
+			}
+
+			isInitiator = true;
+			await setupPeerConnection();
+
+			// Add tracks to the peer connection
+			localStream.getTracks().forEach((track) => {
+				peerConnection.addTrack(track, localStream);
+			});
+		} catch (error) {
+			console.error('Error starting call:', error);
+			mediaError = error;
 		}
-
-		if (!localStream) {
-			await startLocalVideo();
-		}
-
-		isInitiator = true;
-		await setupPeerConnection();
-
-		// Add tracks to the peer connection
-		localStream.getTracks().forEach((track) => {
-			peerConnection.addTrack(track, localStream);
-		});
 	}
 
 	async function handleOffer(offer) {
@@ -150,47 +214,52 @@
 			return;
 		}
 
-		if (!peerConnection) {
-			await setupPeerConnection();
-		}
-
-		if (!localStream) {
-			await startLocalVideo();
-			localStream.getTracks().forEach((track) => {
-				peerConnection.addTrack(track, localStream);
-			});
-		}
-
 		try {
-			await peerConnection.setRemoteDescription(offer);
-			await peerConnection.setLocalDescription();
+			if (!peerConnection) {
+				await setupPeerConnection();
+			}
+
+			if (!localStream) {
+				await startLocalVideo();
+				localStream.getTracks().forEach((track) => {
+					peerConnection.addTrack(track, localStream);
+				});
+			}
+
+			await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+			const answer = await peerConnection.createAnswer();
+			await peerConnection.setLocalDescription(answer);
 			ws.send(JSON.stringify({ answer: peerConnection.localDescription }));
 		} catch (error) {
 			console.error('Error handling offer:', error);
+			mediaError = error;
 		}
 	}
 
 	async function handleAnswer(answer) {
 		try {
 			if (!peerConnection) return;
-			await peerConnection.setRemoteDescription(answer);
+			await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
 		} catch (error) {
 			console.error('Error handling answer:', error);
+			mediaError = error;
 		}
 	}
 
 	async function handleIceCandidate(candidate) {
 		try {
 			if (!peerConnection) return;
-			await peerConnection.addIceCandidate(candidate);
+			await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
 		} catch (error) {
 			if (!ignoreOffer) {
 				console.error('Error handling ICE candidate:', error);
+				mediaError = error;
 			}
 		}
 	}
 
 	function endCall() {
+		mediaError = null;
 		if (localStream) {
 			localStream.getTracks().forEach((track) => track.stop());
 			localStream = null;
@@ -216,6 +285,8 @@
 	}
 
 	onMount(() => {
+		// Detect Safari
+		isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 		setupWebSocket();
 	});
 
@@ -227,34 +298,83 @@
 	});
 </script>
 
-<div class="video-container">
-	<video bind:this={localVideo} autoplay playsinline muted />
-	<video bind:this={remoteVideo} autoplay playsinline />
-</div>
+{#if $user}
+	<div class="container">
+		<div class="status-message" class:error={!!mediaError}>
+			{statusMessage}
+		</div>
 
-<div class="controls">
-	<button on:click={startLocalVideo} disabled={connectionState !== 'connected'}>
-		Start Camera
-	</button>
-	<button on:click={startCall} disabled={!localStream || connectionState !== 'connected'}>
-		Start Call
-	</button>
-	<button on:click={endCall} disabled={!peerConnection}> End Call </button>
-</div>
+		<div class="video-container">
+			<div class="video-wrapper">
+				<video bind:this={localVideo} autoplay playsinline muted />
+				<div class="video-label">{$user.first_name} {$user.last_name}</div>
+			</div>
+			<div class="video-wrapper">
+				<video bind:this={remoteVideo} autoplay playsinline />
+				<div class="video-label">Remote Video</div>
+			</div>
+		</div>
+
+		<div class="controls">
+			<button on:click={startLocalVideo} disabled={!canStartCamera} class:error={!!mediaError}>
+				Start Camera
+			</button>
+			<button on:click={startCall} disabled={!canStartCall}> Start Call </button>
+			<button on:click={endCall} disabled={!canEndCall}> End Call </button>
+		</div>
+	</div>
+{/if}
 
 <style>
+	.container {
+		padding: 1rem;
+		max-width: 1200px;
+		margin: 0 auto;
+	}
+
+	.status-message {
+		text-align: center;
+		padding: 0.5rem;
+		margin-bottom: 1rem;
+		background-color: #e8f5e9;
+		border-radius: 4px;
+	}
+
+	.status-message.error {
+		background-color: #ffebee;
+		color: #c62828;
+	}
+
 	.video-container {
 		display: flex;
 		justify-content: center;
 		gap: 1rem;
 		margin-bottom: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.video-wrapper {
+		position: relative;
+		width: 45%;
+		max-width: 600px;
 	}
 
 	video {
-		width: 45%;
-		max-width: 600px;
+		width: 100%;
 		border: 2px solid #ccc;
 		border-radius: 4px;
+		background-color: #f5f5f5;
+	}
+
+	.video-label {
+		position: absolute;
+		top: 0.5rem;
+		left: 0.5rem;
+		background-color: rgba(0, 0, 0, 0.5);
+		color: white;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.875rem;
 	}
 
 	.controls {
@@ -270,15 +390,32 @@
 		background-color: #4caf50;
 		color: white;
 		cursor: pointer;
-		transition: background-color 0.2s;
+		transition: all 0.2s;
+		font-size: 1rem;
 	}
 
 	button:disabled {
 		background-color: #cccccc;
 		cursor: not-allowed;
+		opacity: 0.7;
 	}
 
 	button:hover:not(:disabled) {
 		background-color: #45a049;
+		transform: translateY(-1px);
+	}
+
+	button.error {
+		background-color: #f44336;
+	}
+
+	button.error:hover:not(:disabled) {
+		background-color: #d32f2f;
+	}
+
+	@media (max-width: 768px) {
+		.video-wrapper {
+			width: 100%;
+		}
 	}
 </style>
