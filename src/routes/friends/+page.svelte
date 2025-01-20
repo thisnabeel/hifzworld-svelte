@@ -113,7 +113,7 @@
 	{/if}
 </div>
 
-{#if true}
+{#if false}
 	<VideoChat />
 {/if}
 

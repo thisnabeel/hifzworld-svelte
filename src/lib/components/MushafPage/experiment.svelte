@@ -14,7 +14,8 @@
 		current_page,
 		viewingAs,
 		loading_branches,
-		loading_commits
+		loading_commits,
+		showToc
 	} from '$lib/stores/main';
 	import BranchesHeader from '../Branches/Header/BranchesHeader.svelte';
 	import PageLister from '$lib/components/PageLister/Index.svelte';
@@ -45,13 +46,11 @@
 	let touchPos; // To store the touch position
 	let clickStartY = null; // Variable to store the x-coordinate where the click started
 
-	onMount(() => {
-		// if ($user) {
-		// 	if ($current_page_number) {
-		// 		getPage();
-		// 	}
-		// }
+	branch.subscribe((payload) => {
+		fetchUserPage();
+	});
 
+	onMount(() => {
 		if (!canvas) {
 			console.error('Canvas element not found');
 			return;
@@ -96,14 +95,6 @@
 		beginPage();
 	}
 
-	// blind.subscribe((payload) => {
-	// 	if (page && user_page && payload) {
-	// 		redrawCanvas();
-	// 	}
-	// });
-	branch.subscribe((payload) => {
-		fetchUserPage();
-	});
 	async function fetchUserPage() {
 		if (!$current_page) return;
 		loading_commits.set(true);
@@ -137,25 +128,24 @@
 		}
 	});
 
-	function beginPage() {
-		if (!canvas) {
-			console.error('Canvas element not found');
-			return;
-		}
+	let imageLoaded = false;
 
+	function beginPage() {
+		imageLoaded = false;
 		img = new Image();
 		img.src = imageSrc;
 
 		img.onload = () => {
+			imageLoaded = true;
 			canvas.width = img.width;
 			canvas.height = img.height;
 			context = canvas.getContext('2d');
 			context.drawImage(img, 0, 0, img.width, img.height);
 			saveToUndoStack();
 			fetchUserPage();
+			redrawCanvas();
 		};
 
-		// Setup the event listener when the component is mounted
 		if (typeof document !== 'undefined') {
 			// document.addEventListener('click', handleDebugClick);
 			canvas.addEventListener('touchstart', handleTouchStart);
@@ -472,15 +462,15 @@
 	}
 
 	function redrawCanvas() {
-		if (!canvas || !context) {
-			console.warn('Canvas or context is not initialized yet.');
+		if (!canvas || !context || !imageLoaded) {
+			console.warn('Canvas or context not initialized or image not loaded.');
 			return;
 		}
-		console.log('Context Initialized');
+		console.log('Redrawing canvas');
 		context.clearRect(0, 0, canvas.width, canvas.height);
 		context.drawImage(img, 0, 0, img.width, img.height);
 
-		// Draw paths only if showPaths is true
+		// Draw paths if they exist
 		if (!inverted) {
 			drawnPaths.forEach((path) => {
 				if (path.length > 1) {
@@ -488,11 +478,7 @@
 					context.moveTo(path[0].x, path[0].y);
 					path.forEach((point) => {
 						context.lineTo(point.x, point.y);
-						if ($blind) {
-							context.strokeStyle = 'rgba(0,0,0, 1)';
-						} else {
-							context.strokeStyle = point.color;
-						}
+						context.strokeStyle = $blind ? 'rgba(0,0,0, 1)' : point.color;
 					});
 					context.lineWidth = 38;
 					context.lineCap = 'round';
@@ -536,8 +522,9 @@
 			context.globalCompositeOperation = 'source-over';
 		}
 
-		// console.log({ drawnPaths });
+		Swal.close();
 	}
+
 	async function saveDrawingToDatabase() {
 		// Now, you can save `drawingData` to your database
 		// console.log();
@@ -560,7 +547,6 @@
 		// console.log(getAllCoordinates());
 		// const bounds = canvas.getBoundingClientRect();
 		// console.log({ bounds });
-		Swal.close();
 	}
 
 	function getAllCoordinates() {
@@ -656,36 +642,6 @@
 		</div>
 	</div>
 
-	<!-- <button on:click={() => (debugMode = false)} class="btn {debugMode ? '' : 'btn-success'}"
-		><i class="fa fa-pen" /></button
-	>
-	<button on:click={() => (debugMode = true)} class="btn {debugMode ? 'btn-warning' : ''}"
-		><i class="fa fa-eraser" /></button
-	> -->
-	<!-- <button
-		on:click={() => {
-			showPaths = !showPaths;
-			redrawCanvas();
-		}}
-		class="btn"><i class="fa {showPaths ? 'fa-eye' : 'fa-eye-slash'}" /></button
-	> -->
-
-	<!-- <button
-		class="btn btn-outline-info"
-		class:btn-primary={saving == -1}
-		class:btn-info={saving == 0}
-		class:btn-success={saving == 1}
-		on:click={saveDrawingToDatabase}
-	>
-		{#if saving === -1}
-			<i class="fa fa-save" /> ?
-		{:else if saving === 0}
-			Saving
-		{:else if saving === 1}
-			Saved
-		{/if}
-	</button> -->
-
 	<input
 		type="number"
 		class="form-control text-center"
@@ -717,6 +673,7 @@
 			</div>
 		</div>
 	{/if}
+
 	<div class="movePage flex">
 		<span
 			class="btn btn-info"
