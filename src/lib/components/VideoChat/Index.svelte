@@ -46,7 +46,10 @@
 	function setupWebSocket() {
 		if (ws?.readyState === WebSocket.OPEN) return;
 
-		ws = new WebSocket('ws://localhost:8000/ws/video-chat/');
+		const baseURL =
+			process.env.NODE_ENV === 'production' ? process.env.API_URL : import.meta.env.VITE_API_URL;
+		const ws_url = `ws://${baseURL.split('//')[1].split('/')[0]}/ws/video-chat/`;
+		ws = new WebSocket(ws_url);
 
 		ws.onopen = () => {
 			console.log('WebSocket connected');
