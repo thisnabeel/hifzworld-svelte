@@ -113,7 +113,9 @@
 	{/if}
 </div>
 
-<VideoChat />
+{#if true}
+	<VideoChat />
+{/if}
 
 <style>
 	.search-results li {
