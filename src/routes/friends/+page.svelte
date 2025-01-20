@@ -4,6 +4,7 @@
 	import { debounce } from '$lib/functions/debounceBasic';
 	import { user } from '$lib/stores/user';
 	import { onMount } from 'svelte';
+	import VideoChat from '$lib/components/VideoChat/Index.svelte';
 
 	let emailInput;
 	let searching = false;
@@ -111,6 +112,8 @@
 		</div>
 	{/if}
 </div>
+
+<VideoChat />
 
 <style>
 	.search-results li {
