@@ -64,7 +64,11 @@
 	<div class="mains">
 		<div class="left-main">
 			<picture class="logo">
-				<img src="/logo.png" alt="harpoonium Logo" />
+				<img
+					src="/pic-main.jpg"
+					style="border-radius:24px; margin-bottom: 24px"
+					alt="harpoonium Logo"
+				/>
 			</picture>
 
 			<h1>اَلسَّلَامُ عَلَيْكُمْ</h1>

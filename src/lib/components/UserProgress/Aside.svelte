@@ -11,7 +11,7 @@
 	export let tocDisabled;
 	export let close;
 
-	let tab = 'feed';
+	let tab = 'grouped';
 	let loading = false;
 
 	onMount(() => {

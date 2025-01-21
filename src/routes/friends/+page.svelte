@@ -61,7 +61,7 @@
 	<input
 		type="text"
 		class="form-control"
-		placeholder="Enter Account Email..."
+		placeholder="Enter Account Email to Grant Access..."
 		bind:value={emailInput}
 		on:keyup={searchByEmail}
 	/>
@@ -70,6 +70,7 @@
 	{/if}
 
 	{#if searchResults}
+		<br />
 		<div class="clean-list search-results">
 			{#each searchResults as result}
 				<li>

@@ -623,18 +623,29 @@
 		<div>
 			<button
 				on:click={() => {
+					if ($blind === false) {
+						inverted = false;
+					}
 					blind.set(!$blind);
 					redrawCanvas();
 				}}
-				class="btn"><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
+				class="btn"
+				class:btn-info={$blind}
+				class:btn-outline-primary={!$blind}
+				><i class="fa {$blind ? 'fa-eye-slash' : 'fa-eye'}" /></button
 			>
 			<button
 				on:click={() => {
+					if (inverted === false) {
+						blind.set(false);
+					}
 					inverted = !inverted;
 					console.log({ inverted });
 					redrawCanvas();
 				}}
-				class="btn">Invert</button
+				class:btn-info={inverted}
+				class:btn-outline-primary={!inverted}
+				class="btn">Invert{inverted ? 'ed' : ''}</button
 			>
 		</div>
 		<div>
