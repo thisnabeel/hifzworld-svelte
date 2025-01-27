@@ -36,6 +36,7 @@
 		"cl-editor": "^2.3.0",
 		"lodash": "^4.17.21",
 		"moment": "^2.29.4",
+		"peerjs": "^1.5.4",
 		"smodale": "^1.0.5",
 		"sv-bootstrap-modal": "^1.0.3",
 		"svelte-inview": "^4.0.1",
