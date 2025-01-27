@@ -82,14 +82,31 @@
 		connect</button
 	>
 
+	<div class="video-chat">
+		<div class="flex-50">
+			<video bind:this={videoEl} width="400" height="400" autoplay="true">
+				<track kind="captions" src="" />
+			</video>
+		</div>
+		<div class="flex-50">
+			<video bind:this={videocurrent} width="400" height="400" autoplay="true">
+				<track kind="captions" src="" />
+			</video>
+		</div>
+	</div>
 	<!-- VIDEO YOU FRIEND TAG HTML -->
-	<video bind:this={videoEl} width="400" height="400" autoplay="true">
-		<track kind="captions" src="" />
-	</video>
 	<br />
 
 	<!-- YOU FACE CAM HERE -->
-	<video bind:this={videocurrent} width="400" height="400" autoplay="true">
-		<track kind="captions" src="" />
-	</video>
 </div>
+
+<style>
+	.video-chat {
+		display: flex;
+	}
+	@media (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
+		.video-chat {
+			display: block;
+		}
+	}
+</style>
