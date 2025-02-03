@@ -70,6 +70,7 @@
 	};
 
 	async function makeRoom(otherSide = { peer_id: null }) {
+		if (!peer) return;
 		if (otherSide && otherSide.peer_id) {
 			codeid = otherSide.peer_id;
 		}
