@@ -12,8 +12,12 @@
 	let searching = false;
 	let searchResults = [];
 
+	export let otherSide;
+
 	import { debounce } from '$lib/functions/debounceBasic';
 	import { user } from '$lib/stores/user';
+
+	$: makeRoom(otherSide);
 
 	async function savePeerId(peerId) {
 		const res = await API.patch('users/' + $user.id + '/update/', {
@@ -65,7 +69,10 @@
 		videoEl.play();
 	};
 
-	async function makeRoom() {
+	async function makeRoom(otherSide = { peer_id: null }) {
+		if (otherSide && otherSide.peer_id) {
+			codeid = otherSide.peer_id;
+		}
 		var conn = peer.connect(codeid);
 		conn.on('data', (data) => {
 			console.log('new data ' + data);

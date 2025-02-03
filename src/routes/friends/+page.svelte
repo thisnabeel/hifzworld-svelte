@@ -10,9 +10,17 @@
 	let searching = false;
 	let searchResults = [];
 
+	let otherSide = null;
+
 	onMount(() => {
 		getList();
 	});
+
+	async function getOtherSide(u) {
+		const res = await API.get(`/users/${u.id}`);
+		otherSide = res;
+		console.log({ otherSide });
+	}
 
 	async function getList() {
 		const list = await API.get(`/user_grants/?email=${$user.email}`);
@@ -94,7 +102,7 @@
 				<h1>Granted Permissions</h1>
 				<p>They can mark your mistakes</p>
 				{#each $user.granted_permissions || [] as grant}
-					<li>
+					<li on:click={() => getOtherSide(grant.grantee)}>
 						{grant.grantee.first_name}
 						{grant.grantee.last_name}
 					</li>
@@ -104,7 +112,7 @@
 				<h1>Received Permissions</h1>
 				<p>You can mark their mistakes</p>
 				{#each $user.received_permissions || [] as grant}
-					<li>
+					<li on:click={() => getOtherSide(grant.granter)}>
 						{grant.granter.first_name}
 						{grant.granter.last_name}
 					</li>
@@ -116,7 +124,7 @@
 
 {#if true}
 	<hr />
-	<VideoChat />
+	<VideoChat {otherSide} />
 {/if}
 
 <style>
