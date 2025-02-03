@@ -14,10 +14,18 @@
 
 	import { debounce } from '$lib/functions/debounceBasic';
 	import { user } from '$lib/stores/user';
+
+	async function savePeerId(peerId) {
+		const res = await API.patch('users/' + $user.id + '/update/', {
+			peer_id: peerId
+		});
+		console.log(res);
+	}
 	// GET YOU ID
 	peer.on('open', (id) => {
 		youid = id;
 		console.log(id);
+		savePeerId(id);
 	});
 	// IF ERROR CAN GET ID
 	peer.on('error', (id) => {
@@ -171,29 +179,55 @@
 	>
 		connect</button
 	> -->
-
 	<div class="video-chat">
-		<div class="flex-50">
-			<video bind:this={videoEl} width="400" height="400" autoplay="true">
+		<div class="flex-50 video-container">
+			<video bind:this={videoEl} width="400" height="400" autoplay playsinline muted>
 				<track kind="captions" src="" />
 			</video>
+			{#if !videoEl || !videoEl.srcObject}
+				<div class="video-placeholder">Waiting for user to join...</div>
+			{/if}
 		</div>
-		<div class="flex-50">
-			<video bind:this={videocurrent} width="400" height="400" autoplay="true">
+		<div class="flex-50 video-container">
+			<video bind:this={videocurrent} width="400" height="400" autoplay playsinline muted>
 				<track kind="captions" src="" />
 			</video>
+			{#if !videocurrent || !videocurrent.srcObject}
+				<div class="video-placeholder">Waiting for user to join...</div>
+			{/if}
 		</div>
 	</div>
-	<!-- VIDEO YOU FRIEND TAG HTML -->
-	<br />
-
-	<!-- YOU FACE CAM HERE -->
 </div>
 
 <style>
 	.video-chat {
 		display: flex;
+		justify-content: center;
+		gap: 20px;
 	}
+
+	.video-container {
+		position: relative;
+		width: 400px;
+		height: 400px;
+	}
+
+	.video-placeholder {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.7);
+		color: white;
+		font-size: 18px;
+		font-weight: bold;
+		border-radius: 8px;
+	}
+
 	@media (max-device-width: 667px) and (-webkit-min-device-pixel-ratio: 2) {
 		.video-chat {
 			display: block;
