@@ -1,11 +1,19 @@
 <script>
 	import { Peer } from 'peerjs';
+	import API from '$lib/api/api';
+
 	var peer = new Peer();
 	let codeid = '';
 	let videocurrent;
 	let videoEl;
 	let youid = '';
 
+	let searchInput;
+	let searching = false;
+	let searchResults = [];
+
+	import { debounce } from '$lib/functions/debounceBasic';
+	import { user } from '$lib/stores/user';
 	// GET YOU ID
 	peer.on('open', (id) => {
 		youid = id;
@@ -48,14 +56,96 @@
 		videoEl.srcObject = stream;
 		videoEl.play();
 	};
+
+	async function makeRoom() {
+		var conn = peer.connect(codeid);
+		conn.on('data', (data) => {
+			console.log('new data ' + data);
+		});
+		conn.on('open', function () {
+			conn.send('hi');
+		});
+		// OPEN YOU WEBAM
+		await navigator.mediaDevices
+			.getUserMedia({
+				video: true,
+				audio: true
+			})
+			.then((stream) => {
+				let call = peer.call(codeid, stream);
+				videocurrent.srcObject = stream;
+				videocurrent.play();
+				call.on('stream', renderYouwebcam);
+			})
+			.catch((err) => console.log('have error ' + err));
+	}
+
+	const searchUser = () => {
+		if (searchInput) {
+			searching = true;
+			try {
+				const combinedResults = $user.granted_permissions
+					.map((g) => g.grantee)
+					.concat($user.received_permissions.map((g) => g.granter))
+					.filter((g) => {
+						return (
+							g.email.toLowerCase().includes(searchInput.toLowerCase()) ||
+							(g.first_name + ' ' + g.last_name).toLowerCase().includes(searchInput.toLowerCase())
+						);
+					});
+
+				const uniqueMap = new Map();
+				combinedResults.forEach((user) => {
+					if (!uniqueMap.has(user.id)) {
+						uniqueMap.set(user.id, user);
+					}
+				});
+
+				// Convert the Map values back into an array
+				searchResults = Array.from(uniqueMap.values());
+			} catch (error) {
+				searchResults = [];
+				console.error('Error searching for user:', error);
+			} finally {
+				searching = false;
+			}
+		} else {
+			searchResults = [];
+		}
+	};
 </script>
 
 <div>
-	you id cam = {youid}
-	<br />
-	code : <input type="" bind:value={codeid} name="" />
+	<div class="flex">
+		<div class="flex-50">
+			<input
+				type="text"
+				class="form-control"
+				placeholder="Search Friends List By Name or Email..."
+				bind:value={searchInput}
+				on:keyup={searchUser}
+			/>
+			{#if searching}
+				<div class="btn btn-primary btn-block">Searching...</div>
+			{/if}
+
+			{#if searchResults}
+				<br />
+				<div class="clean-list search-results">
+					{#each searchResults as result}
+						<li>
+							<i class="btn btn-outline-primary" on:click={makeRoom}>Make Room</i>
+							{result.first_name}
+							{result.last_name}, {result.email}
+						</li>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	</div>
+
 	<!-- BUTTON CONNECT TO FRIEND -->
-	<button
+	<!-- <button
 		on:click={async () => {
 			var conn = peer.connect(codeid);
 			conn.on('data', (data) => {
@@ -80,7 +170,7 @@
 		}}
 	>
 		connect</button
-	>
+	> -->
 
 	<div class="video-chat">
 		<div class="flex-50">

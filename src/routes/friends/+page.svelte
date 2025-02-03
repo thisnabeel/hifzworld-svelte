@@ -115,6 +115,7 @@
 </div>
 
 {#if true}
+	<hr />
 	<VideoChat />
 {/if}
 
