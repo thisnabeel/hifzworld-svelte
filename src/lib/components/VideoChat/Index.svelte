@@ -1,8 +1,11 @@
 <script>
 	import { Peer } from 'peerjs';
 	import API from '$lib/api/api';
+	import { onDestroy } from 'svelte';
 
 	let peer;
+	let localStream = null;
+
 	if (typeof window !== 'undefined') {
 		peer = new Peer();
 	}
@@ -60,6 +63,7 @@
 					video: true,
 					audio: true
 				});
+				localStream = stream;
 				call.answer(stream);
 				call.on('stream', renderYouwebcam);
 				videocurrent.srcObject = stream;
@@ -94,6 +98,7 @@
 				video: true,
 				audio: true
 			});
+			localStream = stream;
 			if (!peer) return;
 			let call = peer.call(codeid, stream);
 			videocurrent.srcObject = stream;
@@ -137,6 +142,16 @@
 			searchResults = [];
 		}
 	};
+
+	onDestroy(() => {
+		if (localStream) {
+			localStream.getTracks().forEach((track) => track.stop());
+		}
+		if (peer) {
+			peer.disconnect();
+			peer.destroy();
+		}
+	});
 </script>
 
 <div>
