@@ -197,7 +197,7 @@
 	> -->
 	<div class="video-chat">
 		<div class="flex-50 video-container">
-			<video bind:this={videoEl} width="400" height="400" autoplay playsinline muted>
+			<video bind:this={videoEl} width="400" height="400" autoplay playsinline>
 				<track kind="captions" src="" />
 			</video>
 			{#if !videoEl || !videoEl.srcObject}
@@ -205,7 +205,7 @@
 			{/if}
 		</div>
 		<div class="flex-50 video-container">
-			<video bind:this={videocurrent} width="400" height="400" autoplay playsinline muted>
+			<video bind:this={videocurrent} width="400" height="400" autoplay playsinline>
 				<track kind="captions" src="" />
 			</video>
 			{#if !videocurrent || !videocurrent.srcObject}
