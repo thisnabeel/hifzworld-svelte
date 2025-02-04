@@ -2,7 +2,11 @@
 	import { Peer } from 'peerjs';
 	import API from '$lib/api/api';
 
-	var peer = new Peer();
+	let peer;
+	if (typeof window !== 'undefined') {
+		peer = new Peer();
+	}
+
 	let codeid = '';
 	let videocurrent;
 	let videoEl;
@@ -17,54 +21,57 @@
 	import { debounce } from '$lib/functions/debounceBasic';
 	import { user } from '$lib/stores/user';
 
-	$: makeRoom(otherSide);
+	$: if (peer) {
+		makeRoom(otherSide);
+	}
 
 	async function savePeerId(peerId) {
+		if (!peer) return;
 		const res = await API.patch('users/' + $user.id + '/update/', {
 			peer_id: peerId
 		});
 		console.log(res);
 	}
-	// GET YOU ID
-	peer.on('open', (id) => {
-		youid = id;
-		console.log(id);
-		savePeerId(id);
-	});
-	// IF ERROR CAN GET ID
-	peer.on('error', (id) => {
-		console.log('error id ' + id);
-	});
 
-	peer.on('connection', (conn) => {
-		console.log('message....');
-		conn.on('data', (data) => {
-			console.log('new data ' + data);
+	if (peer) {
+		peer.on('open', (id) => {
+			youid = id;
+			console.log(id);
+			savePeerId(id);
 		});
-		conn.on('open', () => {
-			console.log('new message');
-		});
-	});
 
-	// HANDLE CONNECTTION
-	peer.on('call', async (call) => {
-		// open webcam
-		await navigator.mediaDevices
-			.getUserMedia({
-				video: true,
-				audio: true
-			})
-			.then((stream) => {
+		peer.on('error', (err) => {
+			console.error('PeerJS Error:', err);
+		});
+
+		peer.on('connection', (conn) => {
+			console.log('New connection');
+			conn.on('data', (data) => {
+				console.log('Received data:', data);
+			});
+			conn.on('open', () => {
+				console.log('Connection opened');
+			});
+		});
+
+		peer.on('call', async (call) => {
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({
+					video: true,
+					audio: true
+				});
 				call.answer(stream);
 				call.on('stream', renderYouwebcam);
 				videocurrent.srcObject = stream;
 				videocurrent.play();
-			})
-			.catch((err) => console.log('err msg' + err));
-	});
-	// RENDER YOU WEBCAM HERE
+			} catch (err) {
+				console.error('Error accessing media devices:', err);
+			}
+		});
+	}
+
 	let renderYouwebcam = (stream) => {
-		console.log(stream);
+		console.log('Rendering webcam stream');
 		videoEl.srcObject = stream;
 		videoEl.play();
 	};
@@ -76,59 +83,26 @@
 		}
 		var conn = peer.connect(codeid);
 		conn.on('data', (data) => {
-			console.log('new data ' + data);
+			console.log('New data:', data);
 		});
 		conn.on('open', function () {
 			conn.send('hi');
 		});
-		// OPEN YOU WEBAM
-		await navigator.mediaDevices
-			.getUserMedia({
+
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
 				video: true,
 				audio: true
-			})
-			.then((stream) => {
-				let call = peer.call(codeid, stream);
-				videocurrent.srcObject = stream;
-				videocurrent.play();
-				call.on('stream', renderYouwebcam);
-			})
-			.catch((err) => console.log('have error ' + err));
-	}
-
-	const searchUser = () => {
-		if (searchInput) {
-			searching = true;
-			try {
-				const combinedResults = $user.granted_permissions
-					.map((g) => g.grantee)
-					.concat($user.received_permissions.map((g) => g.granter))
-					.filter((g) => {
-						return (
-							g.email.toLowerCase().includes(searchInput.toLowerCase()) ||
-							(g.first_name + ' ' + g.last_name).toLowerCase().includes(searchInput.toLowerCase())
-						);
-					});
-
-				const uniqueMap = new Map();
-				combinedResults.forEach((user) => {
-					if (!uniqueMap.has(user.id)) {
-						uniqueMap.set(user.id, user);
-					}
-				});
-
-				// Convert the Map values back into an array
-				searchResults = Array.from(uniqueMap.values());
-			} catch (error) {
-				searchResults = [];
-				console.error('Error searching for user:', error);
-			} finally {
-				searching = false;
-			}
-		} else {
-			searchResults = [];
+			});
+			if (!peer) return;
+			let call = peer.call(codeid, stream);
+			videocurrent.srcObject = stream;
+			videocurrent.play();
+			call.on('stream', renderYouwebcam);
+		} catch (err) {
+			console.error('Error starting video:', err);
 		}
-	};
+	}
 </script>
 
 <div>
