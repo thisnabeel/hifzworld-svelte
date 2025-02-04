@@ -103,6 +103,40 @@
 			console.error('Error starting video:', err);
 		}
 	}
+
+	const searchUser = () => {
+		if (searchInput) {
+			searching = true;
+			try {
+				const combinedResults = $user.granted_permissions
+					.map((g) => g.grantee)
+					.concat($user.received_permissions.map((g) => g.granter))
+					.filter((g) => {
+						return (
+							g.email.toLowerCase().includes(searchInput.toLowerCase()) ||
+							(g.first_name + ' ' + g.last_name).toLowerCase().includes(searchInput.toLowerCase())
+						);
+					});
+
+				const uniqueMap = new Map();
+				combinedResults.forEach((user) => {
+					if (!uniqueMap.has(user.id)) {
+						uniqueMap.set(user.id, user);
+					}
+				});
+
+				// Convert the Map values back into an array
+				searchResults = Array.from(uniqueMap.values());
+			} catch (error) {
+				searchResults = [];
+				console.error('Error searching for user:', error);
+			} finally {
+				searching = false;
+			}
+		} else {
+			searchResults = [];
+		}
+	};
 </script>
 
 <div>
