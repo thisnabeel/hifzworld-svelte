@@ -205,7 +205,7 @@
 			{/if}
 		</div>
 		<div class="flex-50 video-container">
-			<video bind:this={videocurrent} width="400" height="400" autoplay playsinline>
+			<video bind:this={videocurrent} width="400" height="400" autoplay playsinline muted>
 				<track kind="captions" src="" />
 			</video>
 			{#if !videocurrent || !videocurrent.srcObject}
