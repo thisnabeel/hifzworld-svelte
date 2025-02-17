@@ -206,7 +206,7 @@
 								</select>
 							</div>
 							<div class="col-md-2">
-								<label class="form-label">Minutes</label>
+								<label class="form-label">Minute</label>
 								<select class="form-select" bind:value={selectedMinute}>
 									{#each timeIntervals as interval}
 										<option value={interval}>{interval}</option>
