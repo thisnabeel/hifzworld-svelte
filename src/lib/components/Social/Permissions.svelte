@@ -101,22 +101,26 @@
 			<div class="flex-50">
 				<h1>Granted Permissions</h1>
 				<p>They can mark your mistakes</p>
-				{#each $user.granted_permissions || [] as grant}
-					<li on:click={() => getOtherSide(grant.grantee)}>
-						{grant.grantee.first_name}
-						{grant.grantee.last_name}
-					</li>
-				{/each}
+				<ul class="clean-list">
+					{#each $user.granted_permissions || [] as grant}
+						<li class="user" on:click={() => getOtherSide(grant.grantee)}>
+							{grant.grantee.first_name}
+							{grant.grantee.last_name}
+						</li>
+					{/each}
+				</ul>
 			</div>
 			<div class="flex-50">
 				<h1>Received Permissions</h1>
 				<p>You can mark their mistakes</p>
-				{#each $user.received_permissions || [] as grant}
-					<li on:click={() => getOtherSide(grant.granter)}>
-						{grant.granter.first_name}
-						{grant.granter.last_name}
-					</li>
-				{/each}
+				<ul class="clean-list">
+					{#each $user.received_permissions || [] as grant}
+						<li class="user" on:click={() => getOtherSide(grant.granter)}>
+							{grant.granter.first_name}
+							{grant.granter.last_name}
+						</li>
+					{/each}
+				</ul>
 			</div>
 		</div>
 	{/if}
@@ -132,8 +136,18 @@
 	.search-results {
 	}
 	.wrapper {
-		max-width: 500px;
+		/* max-width: 500px; */
 		/* margin: 0 auto; */
 		display: block;
+	}
+
+	.flex-50 {
+		padding: 10px;
+	}
+
+	.user {
+		background-color: #e7ffd1;
+		border: 1px solid #fff;
+		padding: 10px;
 	}
 </style>

@@ -7,9 +7,9 @@
 
 	let my_events = [];
 	let friends_events = [];
-	let newEvent = { title: '', date: '', time_zone: '', duration: 30, is_private: true };
+	let newSlot = { title: '', date: '', time_zone: '', duration: 30, is_private: true };
 	let isEditing = false;
-	let editEventId = null;
+	let editSlotId = null;
 	let formExpanded = false; // ✅ Controls form visibility
 
 	let selectedHour = '';
@@ -41,25 +41,25 @@
 	let minDate = new Date().toISOString().slice(0, 10);
 
 	onMount(() => {
-		getEvents();
+		getSlots();
 	});
 
-	async function getEvents() {
+	async function getSlots() {
 		my_events = await API.get(`/events/users/${$user.id}`);
 		friends_events = await API.get(`/events/users/${$user.id}/friends`);
 	}
 
-	async function createOrUpdateEvent() {
+	async function createOrUpdateSlot() {
 		// Collect missing fields
 		let missingFields = [];
 
-		if (!newEvent.title.trim()) missingFields.push('Recitation Title');
-		if (!newEvent.date) missingFields.push('Date');
+		if (!newSlot.title.trim()) missingFields.push('Recitation Title');
+		if (!newSlot.date) missingFields.push('Date');
 		if (!selectedHour) missingFields.push('Hour');
 		if (!selectedMinute) missingFields.push('Minutes');
 		if (!selectedAmPm) missingFields.push('AM/PM');
-		if (!newEvent.time_zone) missingFields.push('Time Zone');
-		if (!newEvent.duration) missingFields.push('Duration');
+		if (!newSlot.time_zone) missingFields.push('Time Zone');
+		if (!newSlot.duration) missingFields.push('Duration');
 
 		// If any field is missing, alert the user
 		if (missingFields.length > 0) {
@@ -69,37 +69,37 @@
 
 		// Construct a full datetime string in the user's selected time zone
 		let formattedTime = `${selectedHour}:${selectedMinute} ${selectedAmPm}`;
-		let formattedDateTime = `${newEvent.date} ${formattedTime}`;
+		let formattedDateTime = `${newSlot.date} ${formattedTime}`;
 
 		// Convert the datetime to the **user-selected timezone**
 		let localizedDateTime = DateTime.fromFormat(formattedDateTime, 'yyyy-MM-dd h:mm a', {
-			zone: newEvent.time_zone
+			zone: newSlot.time_zone
 		});
 
 		// Convert the localized time to **ISO 8601 format** for Django
-		newEvent.datetime = localizedDateTime.toISO(); // e.g., "2025-02-17T20:30:00-08:00"
+		newSlot.datetime = localizedDateTime.toISO(); // e.g., "2025-02-17T20:30:00-08:00"
 
-		if (!newEvent.datetime) {
+		if (!newSlot.datetime) {
 			alert('Invalid datetime conversion. Please check your inputs.');
 			return;
 		}
 
-		console.log('Posting Event:', newEvent);
+		console.log('Posting Slot:', newSlot);
 
 		if (isEditing) {
-			await API.put(`/events/${editEventId}/`, newEvent);
+			await API.put(`/events/${editSlotId}/`, newSlot);
 		} else {
-			await API.post('/events/', { ...newEvent, user: $user.id });
+			await API.post('/events/', { ...newSlot, user: $user.id });
 		}
 
 		resetForm();
-		getEvents();
+		getSlots();
 	}
 
-	function editEvent(event) {
-		newEvent = { ...event };
+	function editSlot(event) {
+		newSlot = { ...event };
 		isEditing = true;
-		editEventId = event.id;
+		editSlotId = event.id;
 
 		// Expand form when editing
 		formExpanded = true;
@@ -108,24 +108,24 @@
 		let dt = DateTime.fromISO(event.datetime).setZone(event.time_zone);
 
 		// Extract date and time components
-		newEvent.date = dt.toFormat('yyyy-MM-dd');
+		newSlot.date = dt.toFormat('yyyy-MM-dd');
 		selectedHour = dt.toFormat('h');
 		selectedMinute = dt.toFormat('mm');
 		selectedAmPm = dt.toFormat('a');
 	}
 
-	async function deleteEvent(eventId) {
+	async function deleteSlot(eventId) {
 		await API.delete(`/events/${eventId}/`);
-		getEvents();
+		getSlots();
 	}
 
 	function resetForm() {
-		newEvent = { title: '', date: '', time_zone: currentTimeZone, duration: '', is_private: true };
+		newSlot = { title: '', date: '', time_zone: currentTimeZone, duration: '', is_private: true };
 		selectedHour = '';
 		selectedMinute = '00';
 		selectedAmPm = 'AM';
 		isEditing = false;
-		editEventId = null;
+		editSlotId = null;
 		formExpanded = false; // ✅ Collapse form after submitting
 	}
 
@@ -141,7 +141,7 @@
 		return duration === '00:00:30' ? '30 min' : `${duration} min`;
 	}
 
-	function enterEvent(event) {
+	function enterSlot(event) {
 		socialViewTab.set('chatroom');
 		socialRoom.set(event);
 	}
@@ -172,13 +172,13 @@
 									type="text"
 									class="form-control"
 									placeholder="Ex. Surah Isra, First quarter of Baqarah, etc."
-									bind:value={newEvent.title}
+									bind:value={newSlot.title}
 									required
 								/>
 							</div>
 							<div class="col-md-6">
 								<label class="form-label">Time Zone</label>
-								<select class="form-select" bind:value={newEvent.time_zone}>
+								<select class="form-select" bind:value={newSlot.time_zone}>
 									{#each timeZones as zone}
 										<option value={zone}>{zone}</option>
 									{/each}
@@ -192,7 +192,7 @@
 								<input
 									type="date"
 									class="form-control"
-									bind:value={newEvent.date}
+									bind:value={newSlot.date}
 									min={minDate}
 									required
 								/>
@@ -224,8 +224,8 @@
 						</div>
 
 						<div class="mt-4 d-flex justify-content-between">
-							<button class="btn btn-success" on:click={createOrUpdateEvent}>
-								{isEditing ? 'Update Event' : 'Create Event'}
+							<button class="btn btn-success" on:click={createOrUpdateSlot}>
+								{isEditing ? 'Update Slot' : 'Create Slot'}
 							</button>
 							<button class="btn btn-secondary" on:click={resetForm}>Cancel</button>
 						</div>
@@ -235,35 +235,42 @@
 		</div>
 	</div>
 
-	<!-- Event List -->
+	<!-- Slot List -->
 	<div class="mt-5">
-		<h4 class="text-center">🎉 Your Events</h4>
-		<ul class="list-group mt-3">
-			{#each my_events as event}
-				<li class="list-group-item d-flex justify-content-between align-items-center">
-					<div>
-						<strong>{formatDateTime(event.datetime_local, event.time_zone)}</strong> for {formatDuration(
-							event.duration
-						)}, {event.title}
-					</div>
-					<div>
-						<button class="btn btn-info btn-sm me-2" on:click={() => enterEvent(event)}
-							>Enter</button
-						>
-						<button class="btn btn-warning btn-sm me-2" on:click={() => editEvent(event)}
-							>Edit</button
-						>
-						<button class="btn btn-danger btn-sm" on:click={() => deleteEvent(event.id)}
-							>Delete</button
-						>
-					</div>
-				</li>
-			{/each}
-		</ul>
+		<h4 class="text-center">🎉 Your Slots</h4>
+		{#if my_events.length < 1}
+			<div class="msg">
+				You don't have any events coming up. Use the "Create a Slot" button above to open something
+				up.
+			</div>
+		{:else}
+			<ul class="list-group mt-3">
+				{#each my_events as event}
+					<li class="list-group-item d-flex justify-content-between align-items-center">
+						<div>
+							<strong>{formatDateTime(event.datetime_local, event.time_zone)}</strong> for {formatDuration(
+								event.duration
+							)}, {event.title}
+						</div>
+						<div>
+							<button class="btn btn-info btn-sm me-2" on:click={() => enterSlot(event)}
+								>Enter</button
+							>
+							<button class="btn btn-warning btn-sm me-2" on:click={() => editSlot(event)}
+								>Edit</button
+							>
+							<button class="btn btn-danger btn-sm" on:click={() => deleteSlot(event.id)}
+								>Delete</button
+							>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	</div>
 
 	<div class="mt-5">
-		<h4 class="text-center">🎉 Friends Events</h4>
+		<h4 class="text-center">🎉 Friend's Slots</h4>
 		<ul class="list-group mt-3">
 			{#each friends_events as event}
 				<li class="list-group-item d-flex justify-content-between align-items-center">
@@ -273,8 +280,7 @@
 						)}, {event.title}
 					</div>
 					<div>
-						<button class="btn btn-info btn-sm me-2" on:click={() => enterEvent(event)}
-							>Enter</button
+						<button class="btn btn-info btn-sm me-2" on:click={() => enterSlot(event)}>Enter</button
 						>
 					</div>
 				</li>

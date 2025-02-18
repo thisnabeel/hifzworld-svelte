@@ -35,6 +35,6 @@
 		<hr />
 	{/if}
 	{#if $event}
-		<VideoChat event={$event} user={$user} />
+		<VideoChat event={$event} />
 	{/if}
 </div>
