@@ -10,7 +10,7 @@
 	const baseURL =
 		process.env.NODE_ENV === 'production' ? process.env.API_URL : import.meta.env.VITE_API_URL;
 	export let event; // `event.id` is the unique room ID
-	const signalingServer = `ws://${baseURL.split('/')[1].split('.')[1]}/ws/signaling/${event.id}/`;
+	const signalingServer = `ws://${baseURL.split('//')[1].split('/')[0]}/ws/signaling/${event.id}/`;
 
 	const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
