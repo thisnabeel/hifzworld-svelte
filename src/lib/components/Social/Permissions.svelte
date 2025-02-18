@@ -42,6 +42,7 @@
 		});
 
 		user.set({ ...$user, granted_permsissions: [...($user.granted_permissions || []), res] });
+		getList();
 	}
 
 	const searchByEmail = debounce(async () => {
@@ -63,7 +64,7 @@
 </script>
 
 <div class="wrapper">
-	<h1>Access Granted:</h1>
+	<h1>Grant Access:</h1>
 
 	<input
 		type="text"
