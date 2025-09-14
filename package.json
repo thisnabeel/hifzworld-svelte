@@ -31,7 +31,7 @@
 	},
 	"type": "module",
 	"engines": {
-		"node": "22.x"
+		"node": "20.x"
 	},
 	"dependencies": {
 		"@svelte-web-fonts/google": "^1.0.4",
