@@ -6,12 +6,16 @@
 		selected_user_page,
 		viewingAs,
 		loading_branches,
-		loading_commits
+		loading_commits,
+		current_page_number
 	} from '$lib/stores/main';
 	import { user } from '$lib/stores/user';
 	import { onMount, onDestroy } from 'svelte';
 
+	/** @type {any[]} */
 	let branches;
+	/** @type {any[]} */
+	let juzSegments = [];
 	export let saveDrawingToDatabase;
 	export let saving;
 
@@ -19,9 +23,11 @@
 
 	let previousViewingAs = null; // Store the previous value
 
-	const unsubscribeViewingAs = viewingAs.subscribe((payload) => {
-		console.log('viewing as changed to', payload.id);
-		getBranches(payload);
+	const unsubscribeViewingAs = viewingAs.subscribe((/** @type {any} */ payload) => {
+		if (payload && payload.id) {
+			console.log('viewing as changed to', payload.id);
+			getBranches(payload);
+		}
 	});
 
 	// Ensure to unsubscribe when component is destroyed
@@ -38,6 +44,7 @@
 	// 	}
 	// }
 
+	/** @param {any} payload */
 	async function getBranches(payload) {
 		loading_branches.set(true);
 		branches = await API.get('/branches/' + payload.id + '/');
@@ -46,6 +53,23 @@
 		branch.set(branches[0]);
 		loading_branches.set(false);
 	}
+
+	async function getJuzSegments() {
+		try {
+			juzSegments = await API.get('/mushafs/1/juzs');
+		} catch (error) {
+			console.error('Error fetching Juz segments:', error);
+		}
+	}
+
+	/** @param {any} juzSegment */
+	function navigateToJuz(juzSegment) {
+		current_page_number.set(juzSegment.first_page + 1);
+	}
+
+	onMount(() => {
+		getJuzSegments();
+	});
 
 	$: console.log($viewingAs);
 </script>
@@ -61,6 +85,19 @@
 					>
 				{/each}
 			</select>
+		{/if}
+
+		<!-- Juz Navigation -->
+		{#if juzSegments.length > 0}
+			<div class="juz-navigation">
+				<div class="juz-scroll-container">
+					{#each juzSegments as juz}
+						<button class="juz-item" on:click={() => navigateToJuz(juz)} title="Go to {juz.title}">
+							{juz.title}
+						</button>
+					{/each}
+				</div>
+			</div>
 		{/if}
 
 		<div class="flex" class:to-save={saving === -1}>
@@ -83,7 +120,7 @@
 						</div>
 					{:else}
 						<div>
-							{#if $user_branch_pages && $user_branch_pages.length > 0}
+							{#if $user_branch_pages && Array.isArray($user_branch_pages) && $user_branch_pages.length > 0}
 								<div class="flex">
 									<div style="flex: 1 1 70%">
 										<select
@@ -96,7 +133,9 @@
 											}}
 										>
 											{#each $user_branch_pages as page, index}
-												<option value={page} selected={$selected_user_page.id === page.id}
+												<option
+													value={page}
+													selected={$selected_user_page && $selected_user_page.id === page.id}
 													>{page.created_at}</option
 												>
 											{/each}
@@ -111,21 +150,21 @@
 												<i class="fa fa-save" />
 											</div>
 										{:else}
-											<div
+											<button
 												class="btn btn-block btn-outline-primary"
 												on:click={saveDrawingToDatabase}
 											>
 												<i class="fa fa-save" />
-											</div>
+											</button>
 										{/if}
 									</div>
 								</div>
 							{:else if saving === 0}
-								<div class="btn btn-block btn-primary" on:click={() => {}}>Saving...</div>
+								<button class="btn btn-block btn-primary" disabled>Saving...</button>
 							{:else}
-								<div class="btn btn-block btn-outline-primary" on:click={saveDrawingToDatabase}>
+								<button class="btn btn-block btn-outline-primary" on:click={saveDrawingToDatabase}>
 									No Commits Yet, Save?
-								</div>
+								</button>
 							{/if}
 						</div>
 					{/if}
@@ -166,5 +205,62 @@
 
 	.flex-50 {
 		flex: 1 1 50%;
+	}
+
+	.juz-navigation {
+		margin-bottom: 20px;
+	}
+
+	.juz-scroll-container {
+		display: flex;
+		overflow-x: auto;
+		gap: 8px;
+		padding: 8px 0;
+		scrollbar-width: thin;
+		scrollbar-color: #ccc transparent;
+		direction: rtl;
+	}
+
+	.juz-scroll-container::-webkit-scrollbar {
+		height: 4px;
+	}
+
+	.juz-scroll-container::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.juz-scroll-container::-webkit-scrollbar-thumb {
+		background: #ccc;
+		border-radius: 2px;
+	}
+
+	.juz-scroll-container::-webkit-scrollbar-thumb:hover {
+		background: #aaa;
+	}
+
+	.juz-item {
+		flex-shrink: 0;
+		padding: 6px 12px;
+		border: 1px solid #ddd;
+		background: #fff;
+		border-radius: 4px;
+		font-size: 12px;
+		font-weight: 500;
+		color: #333;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		white-space: nowrap;
+		direction: ltr;
+	}
+
+	.juz-item:hover {
+		background: #f8f9fa;
+		border-color: #007bff;
+		color: #007bff;
+	}
+
+	.juz-item:active {
+		background: #e9ecef;
+		transform: translateY(1px);
 	}
 </style>
