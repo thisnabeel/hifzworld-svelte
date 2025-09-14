@@ -30,6 +30,9 @@
 		"vitest": "^0.25.3"
 	},
 	"type": "module",
+	"engines": {
+		"node": "22.x"
+	},
 	"dependencies": {
 		"@svelte-web-fonts/google": "^1.0.4",
 		"axios": "^1.4.0",
