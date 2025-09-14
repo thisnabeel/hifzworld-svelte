@@ -21,7 +21,7 @@
 
 	$: console.log('saving', saving);
 
-	let previousViewingAs = null; // Store the previous value
+	let previousViewingAs = null; // Store the previous value.
 
 	const unsubscribeViewingAs = viewingAs.subscribe((/** @type {any} */ payload) => {
 		if (payload && payload.id) {
