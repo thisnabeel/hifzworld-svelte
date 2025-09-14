@@ -1,13 +1,11 @@
-import adapter from '@sveltejs/adapter-vercel';
+import adapter from '@sveltejs/adapter-auto';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		// adapter-vercel is optimized for Vercel deployments
+		// adapter-auto automatically detects the deployment environment
 		// See https://kit.svelte.dev/docs/adapters for more information about adapters.
-		adapter: adapter({
-			runtime: 'nodejs18.x'
-		})
+		adapter: adapter()
 	}
 };
 
