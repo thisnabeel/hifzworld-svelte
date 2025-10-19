@@ -22,6 +22,10 @@
 	const maxReconnectAttempts = 5;
 	let reconnectTimeout;
 	let isWebRTCReady = false;
+	let heartbeatInterval;
+	let candidateQueue = [];
+	let flushTimer;
+	const HEARTBEAT_MS = 20000; // 20 seconds
 
 	function addDebugLog(message) {
 		const timestamp = new Date().toISOString();
@@ -100,15 +104,21 @@
 
 			peerConnection.onicecandidate = (event) => {
 				if (event.candidate && websocket && websocket.readyState === WebSocket.OPEN) {
-					websocket.send(
-						JSON.stringify({
-							type: 'ice-candidate',
-							candidate: event.candidate
-						})
-					);
-					addDebugLog('ICE candidate sent');
+					// Batch ICE candidates to prevent message flood
+					candidateQueue.push(event.candidate);
+					clearTimeout(flushTimer);
+					flushTimer = setTimeout(() => {
+						if (websocket && websocket.readyState === WebSocket.OPEN && candidateQueue.length > 0) {
+							const candidatesToSend = candidateQueue.splice(0); // Get copy before clearing
+							websocket.send(JSON.stringify({
+								type: 'ice-candidates',
+								candidates: candidatesToSend
+							}));
+							addDebugLog(`Sent batch of ${candidatesToSend.length} ICE candidates`);
+						}
+					}, 100); // Send in batches every 100ms
 				} else if (event.candidate) {
-					addDebugLog('Cannot send ICE candidate: WebSocket not ready');
+					addDebugLog('Cannot queue ICE candidate: WebSocket not ready');
 				}
 			};
 
@@ -179,14 +189,35 @@
 				addDebugLog(`Connected to room: ${event.unique_code}`);
 				reconnectAttempts = 0; // Reset on successful connection
 				websocket.send(JSON.stringify({ type: 'check-room' }));
+				
+				// Start heartbeat to keep connection alive
+				clearInterval(heartbeatInterval);
+				heartbeatInterval = setInterval(() => {
+					if (websocket && websocket.readyState === WebSocket.OPEN) {
+						websocket.send(JSON.stringify({ type: 'ping' }));
+						addDebugLog('Heartbeat ping sent');
+					} else {
+						clearInterval(heartbeatInterval);
+					}
+				}, HEARTBEAT_MS);
 			};
 
 			websocket.onmessage = async (evt) => {
 				const message = JSON.parse(evt.data);
 				addDebugLog(`Received message: ${message.type}`);
-				addDebugLog(`Full message data: ${JSON.stringify(message)}`);
 
 				switch (message.type) {
+					case 'pong':
+						addDebugLog('Heartbeat pong received');
+						return; // Don't log full message for heartbeat
+
+					case 'ping':
+						// Respond to ping from server
+						if (websocket && websocket.readyState === WebSocket.OPEN) {
+							websocket.send(JSON.stringify({ type: 'pong' }));
+							addDebugLog('Heartbeat pong sent');
+						}
+						return;
 					case 'room-full':
 						isFull = true;
 						addDebugLog('Room is full');
@@ -195,7 +226,7 @@
 
 					case 'user-joined':
 						addDebugLog('User joined - checking WebRTC readiness');
-						
+
 						// Ensure WebRTC is ready before proceeding
 						if (!isWebRTCReady || !peerConnection) {
 							addDebugLog('WebRTC not ready yet, waiting...');
@@ -207,17 +238,17 @@
 							}, 1000);
 							break;
 						}
-						
+
 						isNegotiating = true;
 						isConnected = false; // Don't set connected until we have actual connection
-						
+
 						try {
 							// Create offer according to WebRTC best practices (Step 4 from guide)
 							const offer = await peerConnection.createOffer({
 								offerToReceiveAudio: true,
 								offerToReceiveVideo: true
 							});
-							
+
 							await peerConnection.setLocalDescription(offer);
 							addDebugLog('Local description set for offer');
 
@@ -243,11 +274,11 @@
 						try {
 							isNegotiating = true;
 							addDebugLog('Received offer, setting remote description');
-							
+
 							// Set remote description first (critical step)
 							await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
 							addDebugLog('Remote description set from offer');
-							
+
 							// Create answer with proper options
 							const answer = await peerConnection.createAnswer();
 							await peerConnection.setLocalDescription(answer);
@@ -291,13 +322,36 @@
 								addDebugLog('ICE candidate added successfully');
 							} else if (message.candidate) {
 								// Store candidate for later if remote description isn't ready yet
-								addDebugLog('ICE candidate received but remote description not ready - will add after');
+								addDebugLog(
+									'ICE candidate received but remote description not ready - will add after'
+								);
 							} else {
 								addDebugLog('ICE candidate gathering completed on remote side');
 							}
 						} catch (error) {
 							addDebugLog(`Error handling ICE candidate: ${error.message}`);
 							console.error('ICE candidate error:', error);
+						}
+						break;
+
+					case 'ice-candidates':
+						try {
+							// Handle batched ICE candidates
+							if (message.candidates && Array.isArray(message.candidates) && peerConnection && peerConnection.remoteDescription) {
+								for (const candidate of message.candidates) {
+									try {
+										await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+									} catch (candidateError) {
+										addDebugLog(`Error adding batched ICE candidate: ${candidateError.message}`);
+									}
+								}
+								addDebugLog(`Added batch of ${message.candidates.length} ICE candidates`);
+							} else if (message.candidates && Array.isArray(message.candidates)) {
+								addDebugLog('Batched ICE candidates received but remote description not ready');
+							}
+						} catch (error) {
+							addDebugLog(`Error handling batched ICE candidates: ${error.message}`);
+							console.error('Batched ICE candidates error:', error);
 						}
 						break;
 
@@ -317,7 +371,11 @@
 			};
 
 			websocket.onclose = (event) => {
-				addDebugLog(`WebSocket closed with code: ${event.code}, reason: ${event.reason}`);
+				// Clear heartbeat and timers
+				clearInterval(heartbeatInterval);
+				clearTimeout(flushTimer);
+				
+				addDebugLog(`WebSocket closed with code: ${event.code}, reason: ${event.reason}, wasClean: ${event.wasClean}`);
 				isConnected = false;
 				if (remoteVideo) {
 					remoteVideo.srcObject = null;
@@ -349,7 +407,7 @@
 
 		// Initialize WebRTC first (Step 1-3 from the guide)
 		await initWebRTC();
-		
+
 		// Then connect to signaling server (Step 4-6 from the guide)
 		await connectToSignalingServer();
 	}
@@ -382,9 +440,18 @@
 	}
 
 	onDestroy(() => {
+		// Clear all timers and intervals
 		if (reconnectTimeout) {
 			clearTimeout(reconnectTimeout);
 		}
+		if (heartbeatInterval) {
+			clearInterval(heartbeatInterval);
+		}
+		if (flushTimer) {
+			clearTimeout(flushTimer);
+		}
+		
+		// Clean up media and connections
 		if (localStream) {
 			localStream.getTracks().forEach((track) => track.stop());
 		}
