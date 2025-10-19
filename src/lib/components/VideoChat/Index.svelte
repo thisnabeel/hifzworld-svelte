@@ -21,6 +21,7 @@
 	let reconnectAttempts = 0;
 	const maxReconnectAttempts = 5;
 	let reconnectTimeout;
+	let isWebRTCReady = false;
 
 	function addDebugLog(message) {
 		const timestamp = new Date().toISOString();
@@ -147,9 +148,11 @@
 				}
 			};
 
-			addDebugLog('WebRTC initialized');
+			isWebRTCReady = true;
+			addDebugLog('WebRTC initialized and ready for signaling');
 		} catch (error) {
 			addDebugLog(`Error initializing WebRTC: ${error.message}`);
+			isWebRTCReady = false;
 		}
 	}
 
@@ -191,11 +194,32 @@
 						break;
 
 					case 'user-joined':
-						isConnected = true;
+						addDebugLog('User joined - checking WebRTC readiness');
+						
+						// Ensure WebRTC is ready before proceeding
+						if (!isWebRTCReady || !peerConnection) {
+							addDebugLog('WebRTC not ready yet, waiting...');
+							setTimeout(() => {
+								// Retry by sending check-room again
+								if (websocket && websocket.readyState === WebSocket.OPEN) {
+									websocket.send(JSON.stringify({ type: 'check-room' }));
+								}
+							}, 1000);
+							break;
+						}
+						
 						isNegotiating = true;
+						isConnected = false; // Don't set connected until we have actual connection
+						
 						try {
-							const offer = await peerConnection.createOffer();
+							// Create offer according to WebRTC best practices (Step 4 from guide)
+							const offer = await peerConnection.createOffer({
+								offerToReceiveAudio: true,
+								offerToReceiveVideo: true
+							});
+							
 							await peerConnection.setLocalDescription(offer);
+							addDebugLog('Local description set for offer');
 
 							if (websocket && websocket.readyState === WebSocket.OPEN) {
 								websocket.send(
@@ -207,6 +231,7 @@
 								addDebugLog('Offer sent after user joined');
 							} else {
 								addDebugLog('Cannot send offer: WebSocket not ready');
+								isNegotiating = false;
 							}
 						} catch (error) {
 							addDebugLog(`Error creating offer: ${error.message}`);
@@ -218,10 +243,15 @@
 						try {
 							isNegotiating = true;
 							addDebugLog('Received offer, setting remote description');
+							
+							// Set remote description first (critical step)
 							await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-							addDebugLog('Creating answer');
+							addDebugLog('Remote description set from offer');
+							
+							// Create answer with proper options
 							const answer = await peerConnection.createAnswer();
 							await peerConnection.setLocalDescription(answer);
+							addDebugLog('Local description set for answer');
 
 							if (websocket && websocket.readyState === WebSocket.OPEN) {
 								websocket.send(
@@ -233,6 +263,7 @@
 								addDebugLog('Answer sent successfully');
 							} else {
 								addDebugLog('Cannot send answer: WebSocket not ready');
+								isNegotiating = false;
 							}
 						} catch (error) {
 							isNegotiating = false;
@@ -255,12 +286,18 @@
 
 					case 'ice-candidate':
 						try {
-							if (message.candidate) {
+							if (message.candidate && peerConnection && peerConnection.remoteDescription) {
 								await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-								addDebugLog('Added ICE candidate');
+								addDebugLog('ICE candidate added successfully');
+							} else if (message.candidate) {
+								// Store candidate for later if remote description isn't ready yet
+								addDebugLog('ICE candidate received but remote description not ready - will add after');
+							} else {
+								addDebugLog('ICE candidate gathering completed on remote side');
 							}
 						} catch (error) {
 							addDebugLog(`Error handling ICE candidate: ${error.message}`);
+							console.error('ICE candidate error:', error);
 						}
 						break;
 
@@ -310,7 +347,10 @@
 			return;
 		}
 
+		// Initialize WebRTC first (Step 1-3 from the guide)
 		await initWebRTC();
+		
+		// Then connect to signaling server (Step 4-6 from the guide)
 		await connectToSignalingServer();
 	}
 
