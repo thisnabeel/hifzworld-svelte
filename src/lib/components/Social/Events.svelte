@@ -65,9 +65,19 @@
 			const baseURL = import.meta.env.PROD
 				? import.meta.env.VITE_API_URL
 				: import.meta.env.VITE_API_URL;
-			const wsEndpoint = `${wsUrl}${baseURL.split('//')[1].split('/')[0]}/ws/matchmaking/${
-				$user.id
-			}/`;
+			
+			// Extract hostname from URL more robustly
+			let hostname;
+			try {
+				const url = new URL(baseURL);
+				hostname = url.hostname + (url.port ? `:${url.port}` : '');
+			} catch (e) {
+				// Fallback to old parsing if URL constructor fails
+				hostname = baseURL.split('//')[1].split('/')[0];
+			}
+			
+			const wsEndpoint = `${wsUrl}${hostname}/ws/matchmaking/${$user.id}/`;
+			console.log('Attempting WebSocket connection to:', wsEndpoint);
 
 			websocket = new WebSocket(wsEndpoint);
 
@@ -100,20 +110,30 @@
 				}
 			};
 
-			websocket.onclose = () => {
+			websocket.onclose = (event) => {
 				connectionStatus = 'disconnected';
-				console.log('Matchmaking WebSocket disconnected');
+				console.log('Matchmaking WebSocket disconnected', {
+					code: event.code,
+					reason: event.reason,
+					wasClean: event.wasClean,
+					endpoint: wsEndpoint
+				});
 
 				// Attempt to reconnect after 5 seconds
 				setTimeout(() => {
 					if (connectionStatus === 'disconnected') {
+						console.log('Attempting to reconnect WebSocket...');
 						setupWebSocket();
 					}
 				}, 5000);
 			};
 
 			websocket.onerror = (error) => {
-				console.error('WebSocket error:', error);
+				console.error('WebSocket error:', {
+					error,
+					endpoint: wsEndpoint,
+					readyState: websocket.readyState
+				});
 				connectionStatus = 'error';
 			};
 		} catch (error) {
@@ -487,7 +507,7 @@
 </script>
 
 {#if $user && $user.id}
-	<div class="container mt-4">
+<div class="container mt-4">
 		<h2 class="text-center">⚔️ PVP Matchmaking</h2>
 
 		<!-- Connection Status -->
@@ -498,19 +518,19 @@
 						<span class="badge bg-{connectionStatus === 'connected' ? 'success' : 'danger'}">
 							{connectionStatus === 'connected' ? '🟢 Online' : '🔴 Offline'}
 						</span>
-						<button
+				<button
 							class="btn btn-sm {isAvailable ? 'btn-success' : 'btn-warning'}"
 							on:click={toggleAvailability}
-						>
+				>
 							{isAvailable ? '🟢 Available' : '🟡 Busy'}
-						</button>
+				</button>
 					</div>
 					<small class="text-muted">
 						{onlineFriends.length} friend{onlineFriends.length !== 1 ? 's' : ''} online
 					</small>
-				</div>
-			</div>
-		</div>
+							</div>
+							</div>
+						</div>
 
 		<!-- Notification -->
 		{#if notification}
@@ -577,13 +597,13 @@
 											</div>
 										{/if}
 									</div>
-								</div>
 							</div>
-						{/each}
-					</div>
+							</div>
+									{/each}
+							</div>
 				{/if}
-			</div>
-		</div>
+							</div>
+						</div>
 
 		<!-- Matchmaking Requests -->
 		{#if matchmakingRequests.received_requests.length > 0}
@@ -612,9 +632,9 @@
 										on:click={() => handleMatchRequest(request.id, 'decline')}
 									>
 										❌ Decline
-									</button>
+							</button>
 								</div>
-							</div>
+						</div>
 						{/each}
 					</div>
 				</div>
@@ -665,8 +685,8 @@
 											👥 Full/Unavailable
 										</button>
 									{/if}
-								</div>
-							</div>
+		</div>
+	</div>
 						{/each}
 					</div>
 				{:else}
@@ -677,49 +697,6 @@
 			</div>
 		</div>
 
-		<!-- Sent Requests -->
-		{#if matchmakingRequests.sent_requests.length > 0}
-			<div class="row">
-				<div class="col-12">
-					<h5>📤 Sent Requests</h5>
-					<div class="list-group">
-						{#each matchmakingRequests.sent_requests.filter((r) => r.status === 'pending') as request}
-							<div class="list-group-item d-flex justify-content-between align-items-center">
-								<div>
-									Waiting for <strong>{request.target_user_name}</strong> to respond
-									<br />
-									<small class="text-muted">
-										{new Date(request.created_at).toLocaleTimeString()}
-									</small>
-								</div>
-								<span class="badge bg-warning">Pending</span>
-							</div>
-						{/each}
-
-						{#each matchmakingRequests.sent_requests.filter((r) => r.status === 'accepted') as request}
-							<div class="list-group-item d-flex justify-content-between align-items-center">
-								<div>
-									<strong>{request.target_user_name}</strong> accepted your challenge!
-									<br />
-									<small class="text-muted">
-										{new Date(request.created_at).toLocaleTimeString()}
-									</small>
-								</div>
-								<button
-									class="btn btn-success btn-sm"
-									on:click={async () => {
-										await loadMatchmakingRequests();
-										loadAndEnterMatch(request.id);
-									}}
-								>
-									🚀 Enter Match
-								</button>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
-		{/if}
 	</div>
 {:else}
 	<div class="container mt-4">
@@ -727,9 +704,9 @@
 			<h2>⚔️ PVP Matchmaking</h2>
 			<div class="spinner-border text-primary" role="status">
 				<span class="visually-hidden">Loading...</span>
-			</div>
+					</div>
 			<p class="mt-2">Loading user data...</p>
-		</div>
+					</div>
 	</div>
 {/if}
 
