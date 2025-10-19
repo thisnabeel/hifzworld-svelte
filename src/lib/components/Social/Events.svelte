@@ -65,7 +65,7 @@
 			const baseURL = import.meta.env.PROD
 				? import.meta.env.VITE_API_URL
 				: import.meta.env.VITE_API_URL;
-			
+
 			// Extract hostname from URL more robustly
 			let hostname;
 			try {
@@ -75,7 +75,7 @@
 				// Fallback to old parsing if URL constructor fails
 				hostname = baseURL.split('//')[1].split('/')[0];
 			}
-			
+
 			const wsEndpoint = `${wsUrl}${hostname}/ws/matchmaking/${$user.id}/`;
 			console.log('Attempting WebSocket connection to:', wsEndpoint);
 
@@ -649,7 +649,7 @@
 					<button class="btn btn-primary btn-sm" on:click={() => createRoom()}>
 						➕ Create Room
 					</button>
-				</div>
+	</div>
 
 				{#if availableRooms.length > 0}
 					<div class="list-group">
@@ -668,7 +668,7 @@
 										<br />
 										URL: /room/{room.id}
 									</small>
-								</div>
+			</div>
 								<div class="btn-group">
 									{#if room.can_join}
 										{#if room.is_user_in_room}
@@ -680,13 +680,13 @@
 												🚀 Join Room
 											</button>
 										{/if}
-									{:else}
+		{:else}
 										<button class="btn btn-outline-secondary btn-sm" disabled>
 											👥 Full/Unavailable
 										</button>
-									{/if}
-		</div>
+		{/if}
 	</div>
+							</div>
 						{/each}
 					</div>
 				{:else}
@@ -696,7 +696,6 @@
 				{/if}
 			</div>
 		</div>
-
 	</div>
 {:else}
 	<div class="container mt-4">
@@ -704,10 +703,10 @@
 			<h2>⚔️ PVP Matchmaking</h2>
 			<div class="spinner-border text-primary" role="status">
 				<span class="visually-hidden">Loading...</span>
-					</div>
+			</div>
 			<p class="mt-2">Loading user data...</p>
-					</div>
 	</div>
+</div>
 {/if}
 
 <style>

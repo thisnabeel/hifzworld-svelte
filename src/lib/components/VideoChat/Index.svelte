@@ -17,6 +17,7 @@
 	let audioEnabled = true;
 	let debugLogs = [];
 	let isDebugOpen = false;
+	let isNegotiating = false;
 
 	function addDebugLog(message) {
 		const timestamp = new Date().toISOString();
@@ -80,7 +81,7 @@
 			});
 
 			peerConnection.onicecandidate = (event) => {
-				if (event.candidate) {
+				if (event.candidate && websocket && websocket.readyState === WebSocket.OPEN) {
 					websocket.send(
 						JSON.stringify({
 							type: 'ice-candidate',
@@ -88,18 +89,22 @@
 						})
 					);
 					addDebugLog('ICE candidate sent');
+				} else if (event.candidate) {
+					addDebugLog('Cannot send ICE candidate: WebSocket not ready');
 				}
 			};
 
 			peerConnection.oniceconnectionstatechange = () => {
 				const state = peerConnection.iceConnectionState;
 				addDebugLog(`ICE connection state: ${state}`);
-				
+
 				if (state === 'connected' || state === 'completed') {
 					isConnected = true;
+					isNegotiating = false;
 					addDebugLog('✅ WebRTC peer connection established!');
 				} else if (state === 'failed' || state === 'disconnected') {
 					isConnected = false;
+					isNegotiating = false;
 					addDebugLog(`❌ WebRTC connection failed: ${state}`);
 				}
 			};
@@ -161,36 +166,50 @@
 
 					case 'user-joined':
 						isConnected = true;
+						isNegotiating = true;
 						try {
 							const offer = await peerConnection.createOffer();
 							await peerConnection.setLocalDescription(offer);
-							websocket.send(
-								JSON.stringify({
-									type: 'offer',
-									offer: offer
-								})
-							);
-							addDebugLog('Offer sent after user joined');
+
+							if (websocket && websocket.readyState === WebSocket.OPEN) {
+								websocket.send(
+									JSON.stringify({
+										type: 'offer',
+										offer: offer
+									})
+								);
+								addDebugLog('Offer sent after user joined');
+							} else {
+								addDebugLog('Cannot send offer: WebSocket not ready');
+							}
 						} catch (error) {
 							addDebugLog(`Error creating offer: ${error.message}`);
+							isNegotiating = false;
 						}
 						break;
 
 					case 'offer':
 						try {
+							isNegotiating = true;
 							addDebugLog('Received offer, setting remote description');
 							await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
 							addDebugLog('Creating answer');
 							const answer = await peerConnection.createAnswer();
 							await peerConnection.setLocalDescription(answer);
-							websocket.send(
-								JSON.stringify({
-									type: 'answer',
-									answer: answer
-								})
-							);
-							addDebugLog('Answer sent successfully');
+
+							if (websocket && websocket.readyState === WebSocket.OPEN) {
+								websocket.send(
+									JSON.stringify({
+										type: 'answer',
+										answer: answer
+									})
+								);
+								addDebugLog('Answer sent successfully');
+							} else {
+								addDebugLog('Cannot send answer: WebSocket not ready');
+							}
 						} catch (error) {
+							isNegotiating = false;
 							addDebugLog(`Error handling offer: ${error.message}`);
 							console.error('Offer handling error:', error);
 						}
@@ -202,6 +221,7 @@
 							await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
 							addDebugLog('Remote description set from answer - connection should be established');
 						} catch (error) {
+							isNegotiating = false;
 							addDebugLog(`Error handling answer: ${error.message}`);
 							console.error('Answer handling error:', error);
 						}
