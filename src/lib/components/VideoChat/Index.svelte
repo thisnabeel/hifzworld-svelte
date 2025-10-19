@@ -24,7 +24,7 @@
 	}
 
 	let signalingServer;
-	
+
 	// Reactive statement to build signaling server URL when event is available
 	$: {
 		if (event && event.unique_code) {
@@ -32,7 +32,7 @@
 			const baseURL = import.meta.env.PROD
 				? import.meta.env.VITE_API_URL
 				: import.meta.env.VITE_API_URL;
-			
+
 			// Extract hostname from URL more robustly
 			let hostname;
 			try {
@@ -42,12 +42,15 @@
 				// Fallback to old parsing if URL constructor fails
 				hostname = baseURL.split('//')[1].split('/')[0];
 			}
-			
+
 			signalingServer = `${wsUrl}${hostname}/ws/signaling/${event.unique_code}/`;
 			console.log('VideoChat - Event data:', event);
 			console.log('VideoChat - Signaling server:', signalingServer);
 		} else {
-			console.warn('VideoChat - Event or unique_code not available:', { event, unique_code: event?.unique_code });
+			console.warn('VideoChat - Event or unique_code not available:', {
+				event,
+				unique_code: event?.unique_code
+			});
 		}
 	}
 
@@ -89,13 +92,36 @@
 			};
 
 			peerConnection.oniceconnectionstatechange = () => {
-				addDebugLog(`ICE connection state: ${peerConnection.iceConnectionState}`);
+				const state = peerConnection.iceConnectionState;
+				addDebugLog(`ICE connection state: ${state}`);
+				
+				if (state === 'connected' || state === 'completed') {
+					isConnected = true;
+					addDebugLog('✅ WebRTC peer connection established!');
+				} else if (state === 'failed' || state === 'disconnected') {
+					isConnected = false;
+					addDebugLog(`❌ WebRTC connection failed: ${state}`);
+				}
 			};
 
 			peerConnection.ontrack = (event) => {
-				if (remoteVideo) {
-					remoteVideo.srcObject = event.streams[0];
-					addDebugLog('Remote stream received');
+				addDebugLog(`Remote track received: ${event.track.kind}`);
+				if (event.streams && event.streams[0]) {
+					if (remoteVideo) {
+						remoteVideo.srcObject = event.streams[0];
+						addDebugLog('Remote stream set to video element');
+					} else {
+						addDebugLog('Warning: remoteVideo element not ready yet');
+						// Set up a delayed retry
+						setTimeout(() => {
+							if (remoteVideo && event.streams[0]) {
+								remoteVideo.srcObject = event.streams[0];
+								addDebugLog('Remote stream set to video element (delayed)');
+							}
+						}, 100);
+					}
+				} else {
+					addDebugLog('Warning: No streams in ontrack event');
 				}
 			};
 
@@ -110,7 +136,7 @@
 			addDebugLog('Cannot connect: signaling server URL not ready');
 			return;
 		}
-		
+
 		try {
 			addDebugLog(`Connecting to signaling server: ${signalingServer}`);
 			websocket = new WebSocket(signalingServer);
@@ -152,7 +178,9 @@
 
 					case 'offer':
 						try {
+							addDebugLog('Received offer, setting remote description');
 							await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+							addDebugLog('Creating answer');
 							const answer = await peerConnection.createAnswer();
 							await peerConnection.setLocalDescription(answer);
 							websocket.send(
@@ -161,18 +189,21 @@
 									answer: answer
 								})
 							);
-							addDebugLog('Answer sent');
+							addDebugLog('Answer sent successfully');
 						} catch (error) {
 							addDebugLog(`Error handling offer: ${error.message}`);
+							console.error('Offer handling error:', error);
 						}
 						break;
 
 					case 'answer':
 						try {
+							addDebugLog('Received answer, setting remote description');
 							await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-							addDebugLog('Remote description set from answer');
+							addDebugLog('Remote description set from answer - connection should be established');
 						} catch (error) {
 							addDebugLog(`Error handling answer: ${error.message}`);
+							console.error('Answer handling error:', error);
 						}
 						break;
 
@@ -219,7 +250,7 @@
 			addDebugLog('Cannot start: event or unique_code not available');
 			return;
 		}
-		
+
 		await initWebRTC();
 		await connectToSignalingServer();
 	}
