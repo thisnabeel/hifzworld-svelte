@@ -23,13 +23,33 @@
 		debugLogs = [...debugLogs, `${timestamp}: ${message}`];
 	}
 
-	const wsUrl = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-	const baseURL = import.meta.env.PROD
-		? import.meta.env.VITE_API_URL
-		: import.meta.env.VITE_API_URL;
-	const signalingServer = `${wsUrl}${baseURL.split('//')[1].split('/')[0]}/ws/signaling/${
-		event.unique_code
-	}/`;
+	let signalingServer;
+	
+	// Reactive statement to build signaling server URL when event is available
+	$: {
+		if (event && event.unique_code) {
+			const wsUrl = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+			const baseURL = import.meta.env.PROD
+				? import.meta.env.VITE_API_URL
+				: import.meta.env.VITE_API_URL;
+			
+			// Extract hostname from URL more robustly
+			let hostname;
+			try {
+				const url = new URL(baseURL);
+				hostname = url.hostname + (url.port ? `:${url.port}` : '');
+			} catch (e) {
+				// Fallback to old parsing if URL constructor fails
+				hostname = baseURL.split('//')[1].split('/')[0];
+			}
+			
+			signalingServer = `${wsUrl}${hostname}/ws/signaling/${event.unique_code}/`;
+			console.log('VideoChat - Event data:', event);
+			console.log('VideoChat - Signaling server:', signalingServer);
+		} else {
+			console.warn('VideoChat - Event or unique_code not available:', { event, unique_code: event?.unique_code });
+		}
+	}
 
 	async function initWebRTC() {
 		try {
@@ -86,7 +106,13 @@
 	}
 
 	async function connectToSignalingServer() {
+		if (!signalingServer) {
+			addDebugLog('Cannot connect: signaling server URL not ready');
+			return;
+		}
+		
 		try {
+			addDebugLog(`Connecting to signaling server: ${signalingServer}`);
 			websocket = new WebSocket(signalingServer);
 
 			websocket.onopen = () => {
@@ -189,12 +215,22 @@
 	}
 
 	async function start() {
+		if (!event || !event.unique_code) {
+			addDebugLog('Cannot start: event or unique_code not available');
+			return;
+		}
+		
 		await initWebRTC();
 		await connectToSignalingServer();
 	}
 
-	onMount(() => {
+	// Reactive statement to start when event becomes available
+	$: if (event && event.unique_code && signalingServer) {
 		start();
+	}
+
+	onMount(() => {
+		// Start will be called reactively when event is ready
 	});
 
 	function toggleVideo() {
