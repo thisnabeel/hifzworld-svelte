@@ -28,7 +28,7 @@
 		? import.meta.env.VITE_API_URL
 		: import.meta.env.VITE_API_URL;
 	const signalingServer = `${wsUrl}${baseURL.split('//')[1].split('/')[0]}/ws/signaling/${
-		event.id
+		event.unique_code
 	}/`;
 
 	async function initWebRTC() {
@@ -91,7 +91,7 @@
 
 			websocket.onopen = () => {
 				addDebugLog('WebSocket connected');
-				addDebugLog(`Connected to room: ${event.id}`);
+				addDebugLog(`Connected to room: ${event.unique_code}`);
 				websocket.send(JSON.stringify({ type: 'check-room' }));
 			};
 

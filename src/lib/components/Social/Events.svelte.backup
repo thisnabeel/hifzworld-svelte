@@ -6,7 +6,6 @@
 
 	let onlineFriends = [];
 	let matchmakingRequests = { sent_requests: [], received_requests: [] };
-	let availableRooms = [];
 	let websocket = null;
 	let connectionStatus = 'disconnected';
 	let isAvailable = true;
@@ -19,7 +18,6 @@
 		initialized = true;
 		loadOnlineFriends();
 		loadMatchmakingRequests();
-		loadAvailableRooms();
 		setupWebSocket();
 		updateOnlineStatus(true, true);
 	}
@@ -29,7 +27,6 @@
 		if ($user && $user.id) {
 			loadOnlineFriends();
 			loadMatchmakingRequests();
-			loadAvailableRooms();
 			setupWebSocket();
 
 			// Set initial online status
@@ -93,10 +90,6 @@
 					loadMatchmakingRequests();
 				} else if (data.type === 'friend_status_update') {
 					loadOnlineFriends();
-				} else if (data.type === 'match_status_update') {
-					handleMatchStatusUpdate(data.data);
-				} else if (data.type === 'room_notification') {
-					handleRoomNotification(data.data);
 				}
 			};
 
@@ -147,20 +140,6 @@
 			matchmakingRequests = response || { sent_requests: [], received_requests: [] };
 		} catch (error) {
 			console.error('Failed to load matchmaking requests:', error);
-		}
-	}
-
-	async function loadAvailableRooms() {
-		if (!$user || !$user.id) {
-			console.warn('Cannot load rooms: user not available');
-			return;
-		}
-
-		try {
-			const response = await API.get(`/users/${$user.id}/rooms/`);
-			availableRooms = response.rooms || [];
-		} catch (error) {
-			console.error('Failed to load available rooms:', error);
 		}
 	}
 
@@ -259,10 +238,6 @@
 				// The session_id should contain the event ID for the match
 				const eventResponse = await API.get(`/events/${request.session_id}/`);
 				console.log('Event loaded:', eventResponse);
-
-				// Update match status to in_progress and notify the other user
-				await updateMatchStatus(requestId, 'enter_room');
-
 				socialViewTab.set('chatroom');
 				socialRoom.set(eventResponse);
 			} else {
@@ -291,168 +266,6 @@
 		setTimeout(() => {
 			notification = null;
 		}, 3000);
-	}
-
-	function handleMatchStatusUpdate(data) {
-		console.log('Match status update received:', data);
-
-		if (data.type === 'user_entered_room') {
-			showNotification({
-				type: 'info',
-				message: `${data.user_name} has entered the match room and is waiting for you!`
-			});
-		}
-
-		// Refresh the matchmaking requests to update status
-		loadMatchmakingRequests();
-	}
-
-	async function updateMatchStatus(requestId, action) {
-		if (!$user || !$user.id) {
-			console.warn('Cannot update match status: user not available');
-			return;
-		}
-
-		try {
-			await API.post(`/matchmaking/request/${requestId}/status/`, {
-				action: action,
-				user_id: $user.id
-			});
-			console.log(`Match status updated to: ${action}`);
-		} catch (error) {
-			console.error('Failed to update match status:', error);
-		}
-	}
-
-	function handleRoomNotification(data) {
-		console.log('Room notification received:', data);
-
-		if (data.type === 'room_created') {
-			showNotification({
-				type: 'info',
-				message: `${data.creator_name} created a room for you to join!`
-			});
-		} else if (data.type === 'user_joined_room') {
-			showNotification({
-				type: 'success',
-				message: `${data.joiner_name} joined your room!`
-			});
-		} else if (data.type === 'user_left_room') {
-			showNotification({
-				type: 'warning',
-				message: `${data.leaver_name} left the room`
-			});
-		}
-
-		// Refresh the available rooms
-		loadAvailableRooms();
-	}
-
-	async function createRoom(targetUserId = null) {
-		if (!$user || !$user.id) {
-			console.warn('Cannot create room: user not available');
-			return;
-		}
-
-		try {
-			const roomData = {
-				user_id: $user.id,
-				title: 'PVP Match'
-			};
-
-			if (targetUserId) {
-				roomData.target_user_id = targetUserId;
-			}
-
-			const response = await API.post('/rooms/create/', roomData);
-			console.log('Room created:', response);
-
-			// Refresh available rooms
-			await loadAvailableRooms();
-
-			showNotification({
-				type: 'success',
-				message: 'Room created successfully!'
-			});
-		} catch (error) {
-			console.error('Failed to create room:', error);
-			showNotification({
-				type: 'error',
-				message: 'Failed to create room. Please try again.'
-			});
-		}
-	}
-
-	async function joinRoom(roomId) {
-		if (!$user || !$user.id) {
-			console.warn('Cannot join room: user not available');
-			return;
-		}
-
-		try {
-			// Use the enter endpoint which handles creating session for room creator
-			const response = await API.post(`/rooms/${roomId}/enter/`, {
-				user_id: $user.id
-			});
-			console.log('Entered room:', response);
-
-			// Refresh available rooms
-			await loadAvailableRooms();
-
-			// Navigate to the chatroom - if session_id exists now, go to chatroom
-			if (response.room.session_id) {
-				// Get the actual event data
-				const eventResponse = await API.get(`/events/${response.room.session_id}/`);
-				console.log('Event loaded for room:', eventResponse);
-				socialViewTab.set('chatroom');
-				socialRoom.set(eventResponse);
-				showNotification({
-					type: 'success',
-					message: 'Entering room...'
-				});
-			} else {
-				// This should not happen now with the updated backend logic
-				console.warn('Room has no session_id after entering');
-			}
-		} catch (error) {
-			console.error('Failed to join room:', error);
-			showNotification({
-				type: 'error',
-				message: 'Failed to join room. Please try again.'
-			});
-		}
-	}
-
-	// Function for direct room entry via URL (can be used from route handlers)
-	async function enterRoomDirectly(roomId) {
-		if (!$user || !$user.id) {
-			console.warn('Cannot enter room: user not available');
-			return false;
-		}
-
-		try {
-			// Use the enter endpoint which handles creating session for room creator
-			const response = await API.post(`/rooms/${roomId}/enter/`, {
-				user_id: $user.id
-			});
-			console.log('Entered room directly:', response);
-
-			// Navigate to the chatroom - if session_id exists now, go to chatroom
-			if (response.room.session_id) {
-				// Get the actual event data
-				const eventResponse = await API.get(`/events/${response.room.session_id}/`);
-				console.log('Event loaded for room:', eventResponse);
-				socialViewTab.set('chatroom');
-				socialRoom.set(eventResponse);
-				return true;
-			} else {
-				console.warn('Room has no session_id after entering');
-				return false;
-			}
-		} catch (error) {
-			console.error('Failed to enter room:', error);
-			return false;
-		}
 	}
 
 	function toggleAvailability() {
@@ -561,20 +374,12 @@
 											</div>
 										</div>
 										{#if friend.is_available_for_match}
-											<div class="btn-group w-100 mt-2">
-												<button
-													class="btn btn-primary btn-sm"
-													on:click={() => requestMatch(friend.id)}
-												>
-													⚔️ Challenge
-												</button>
-												<button
-													class="btn btn-success btn-sm"
-													on:click={() => createRoom(friend.id)}
-												>
-													🏠 Create Room
-												</button>
-											</div>
+											<button
+												class="btn btn-primary btn-sm mt-2 w-100"
+												on:click={() => requestMatch(friend.id)}
+											>
+												⚔️ Challenge to Match
+											</button>
 										{/if}
 									</div>
 								</div>
@@ -620,62 +425,6 @@
 				</div>
 			</div>
 		{/if}
-
-		<!-- Available Rooms -->
-		<div class="row mb-4">
-			<div class="col-12">
-				<div class="d-flex justify-content-between align-items-center mb-3">
-					<h5>🏠 Available Rooms</h5>
-					<button class="btn btn-primary btn-sm" on:click={() => createRoom()}>
-						➕ Create Room
-					</button>
-				</div>
-
-				{#if availableRooms.length > 0}
-					<div class="list-group">
-						{#each availableRooms as room}
-							<div class="list-group-item d-flex justify-content-between align-items-center">
-								<div>
-									<strong>{room.title}</strong>
-									<br />
-									<small class="text-muted">
-										Room: {room.room_code} |
-										{room.user1_name}
-										{#if room.user2_name}vs {room.user2_name}{:else}(waiting for opponent){/if}
-										<br />
-										Status: <span class="badge bg-info">{room.status}</span> |
-										{new Date(room.last_activity).toLocaleTimeString()}
-										<br />
-										URL: /room/{room.id}
-									</small>
-								</div>
-								<div class="btn-group">
-									{#if room.can_join}
-										{#if room.is_user_in_room}
-											<button class="btn btn-primary btn-sm" on:click={() => joinRoom(room.id)}>
-												🏠 Enter Room
-											</button>
-										{:else}
-											<button class="btn btn-success btn-sm" on:click={() => joinRoom(room.id)}>
-												🚀 Join Room
-											</button>
-										{/if}
-									{:else}
-										<button class="btn btn-outline-secondary btn-sm" disabled>
-											👥 Full/Unavailable
-										</button>
-									{/if}
-								</div>
-							</div>
-						{/each}
-					</div>
-				{:else}
-					<div class="text-center text-muted py-3">
-						No rooms available. Create one to start a PVP match!
-					</div>
-				{/if}
-			</div>
-		</div>
 
 		<!-- Sent Requests -->
 		{#if matchmakingRequests.sent_requests.length > 0}
