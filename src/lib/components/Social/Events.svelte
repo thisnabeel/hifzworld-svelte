@@ -1,290 +1,421 @@
 <script>
 	import API from '$lib/api/api';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { user } from '$lib/stores/user';
-	import { DateTime } from 'luxon';
 	import { socialRoom, socialViewTab } from './social_store';
 
-	let my_events = [];
-	let friends_events = [];
-	let newSlot = { title: '', date: '', time_zone: '', duration: 30, is_private: true };
-	let isEditing = false;
-	let editSlotId = null;
-	let formExpanded = false; // ✅ Controls form visibility
-
-	let selectedHour = '';
-	let selectedMinute = '00';
-	let selectedAmPm = 'AM';
-
-	// Get User's Current Time Zone
-	let currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-	// Commonly Used Time Zones
-	let timeZones = [
-		'UTC',
-		'America/New_York',
-		'America/Los_Angeles',
-		'America/Chicago',
-		'Europe/London',
-		'Europe/Berlin',
-		'Asia/Karachi',
-		'Asia/Dubai',
-		'Asia/Tokyo'
-	];
-
-	// Allowed Time Intervals (:00, :15, :30, :45)
-	let timeIntervals = ['00', '15', '30', '45'];
-	let amPmOptions = ['AM', 'PM'];
-	let hourOptions = Array.from({ length: 12 }, (_, i) => (i + 1).toString()); // 1-12 hours
-
-	// Set the min date to today
-	let minDate = new Date().toISOString().slice(0, 10);
+	let onlineFriends = [];
+	let matchmakingRequests = { sent_requests: [], received_requests: [] };
+	let websocket = null;
+	let connectionStatus = 'disconnected';
+	let isAvailable = true;
+	let notification = null;
 
 	onMount(() => {
-		getSlots();
+		loadOnlineFriends();
+		loadMatchmakingRequests();
+		setupWebSocket();
+
+		// Set initial online status
+		updateOnlineStatus(true, true);
+
+		// Poll for updates every 30 seconds
+		const pollInterval = setInterval(() => {
+			loadOnlineFriends();
+			loadMatchmakingRequests();
+		}, 30000);
+
+		return () => clearInterval(pollInterval);
 	});
 
-	async function getSlots() {
-		my_events = await API.get(`/events/users/${$user.id}`);
-		friends_events = await API.get(`/events/users/${$user.id}/friends`);
-	}
-
-	async function createOrUpdateSlot() {
-		// Collect missing fields
-		let missingFields = [];
-
-		if (!newSlot.title.trim()) missingFields.push('Recitation Title');
-		if (!newSlot.date) missingFields.push('Date');
-		if (!selectedHour) missingFields.push('Hour');
-		if (!selectedMinute) missingFields.push('Minutes');
-		if (!selectedAmPm) missingFields.push('AM/PM');
-		if (!newSlot.time_zone) missingFields.push('Time Zone');
-		if (!newSlot.duration) missingFields.push('Duration');
-
-		// If any field is missing, alert the user
-		if (missingFields.length > 0) {
-			alert(`Please fill in the following fields:\n- ${missingFields.join('\n- ')}`);
-			return;
+	onDestroy(() => {
+		if (websocket) {
+			websocket.close();
 		}
+		updateOnlineStatus(false, false);
+	});
 
-		// Construct a full datetime string in the user's selected time zone
-		let formattedTime = `${selectedHour}:${selectedMinute} ${selectedAmPm}`;
-		let formattedDateTime = `${newSlot.date} ${formattedTime}`;
+	async function setupWebSocket() {
+		try {
+			const wsUrl = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+			const baseURL = import.meta.env.PROD
+				? import.meta.env.VITE_API_URL
+				: import.meta.env.VITE_API_URL;
+			const wsEndpoint = `${wsUrl}${baseURL.split('//')[1].split('/')[0]}/ws/matchmaking/${
+				$user.id
+			}/`;
 
-		// Convert the datetime to the **user-selected timezone**
-		let localizedDateTime = DateTime.fromFormat(formattedDateTime, 'yyyy-MM-dd h:mm a', {
-			zone: newSlot.time_zone
-		});
+			websocket = new WebSocket(wsEndpoint);
 
-		// Convert the localized time to **ISO 8601 format** for Django
-		newSlot.datetime = localizedDateTime.toISO(); // e.g., "2025-02-17T20:30:00-08:00"
+			websocket.onopen = () => {
+				connectionStatus = 'connected';
+				console.log('Matchmaking WebSocket connected');
 
-		if (!newSlot.datetime) {
-			alert('Invalid datetime conversion. Please check your inputs.');
-			return;
+				// Send heartbeat every 20 seconds
+				const heartbeatInterval = setInterval(() => {
+					if (websocket && websocket.readyState === WebSocket.OPEN) {
+						websocket.send(JSON.stringify({ type: 'heartbeat' }));
+					} else {
+						clearInterval(heartbeatInterval);
+					}
+				}, 20000);
+			};
+
+			websocket.onmessage = (event) => {
+				const data = JSON.parse(event.data);
+
+				if (data.type === 'matchmaking_notification') {
+					showNotification(data.data);
+					loadMatchmakingRequests();
+				} else if (data.type === 'friend_status_update') {
+					loadOnlineFriends();
+				}
+			};
+
+			websocket.onclose = () => {
+				connectionStatus = 'disconnected';
+				console.log('Matchmaking WebSocket disconnected');
+
+				// Attempt to reconnect after 5 seconds
+				setTimeout(() => {
+					if (connectionStatus === 'disconnected') {
+						setupWebSocket();
+					}
+				}, 5000);
+			};
+
+			websocket.onerror = (error) => {
+				console.error('WebSocket error:', error);
+				connectionStatus = 'error';
+			};
+		} catch (error) {
+			console.error('Failed to setup WebSocket:', error);
+			connectionStatus = 'error';
 		}
+	}
 
-		console.log('Posting Slot:', newSlot);
-
-		if (isEditing) {
-			await API.put(`/events/${editSlotId}/`, newSlot);
-		} else {
-			await API.post('/events/', { ...newSlot, user: $user.id });
+	async function loadOnlineFriends() {
+		try {
+			const response = await API.get(`/users/${$user.id}/online-friends/`);
+			onlineFriends = response || [];
+		} catch (error) {
+			console.error('Failed to load online friends:', error);
 		}
-
-		resetForm();
-		getSlots();
 	}
 
-	function editSlot(event) {
-		newSlot = { ...event };
-		isEditing = true;
-		editSlotId = event.id;
-
-		// Expand form when editing
-		formExpanded = true;
-
-		// Convert stored UTC datetime back to the selected time zone
-		let dt = DateTime.fromISO(event.datetime).setZone(event.time_zone);
-
-		// Extract date and time components
-		newSlot.date = dt.toFormat('yyyy-MM-dd');
-		selectedHour = dt.toFormat('h');
-		selectedMinute = dt.toFormat('mm');
-		selectedAmPm = dt.toFormat('a');
+	async function loadMatchmakingRequests() {
+		try {
+			const response = await API.get(`/users/${$user.id}/matchmaking-requests/`);
+			matchmakingRequests = response || { sent_requests: [], received_requests: [] };
+		} catch (error) {
+			console.error('Failed to load matchmaking requests:', error);
+		}
 	}
 
-	async function deleteSlot(eventId) {
-		await API.delete(`/events/${eventId}/`);
-		getSlots();
+	async function updateOnlineStatus(online, available) {
+		try {
+			await API.post(`/users/${$user.id}/update-status/`, {
+				is_online: online,
+				is_available_for_match: available
+			});
+		} catch (error) {
+			console.error('Failed to update online status:', error);
+		}
 	}
 
-	function resetForm() {
-		newSlot = { title: '', date: '', time_zone: currentTimeZone, duration: '', is_private: true };
-		selectedHour = '';
-		selectedMinute = '00';
-		selectedAmPm = 'AM';
-		isEditing = false;
-		editSlotId = null;
-		formExpanded = false; // ✅ Collapse form after submitting
+	async function requestMatch(friendId) {
+		try {
+			const response = await API.post('/matchmaking/request/', {
+				requester_id: $user.id,
+				target_user_id: friendId
+			});
+
+			showNotification({
+				type: 'success',
+				message: 'Match request sent!'
+			});
+
+			loadMatchmakingRequests();
+		} catch (error) {
+			showNotification({
+				type: 'error',
+				message: error.message || 'Failed to send match request'
+			});
+		}
 	}
 
-	// Function to format datetime
-	function formatDateTime(datetimeStr, timeZone) {
-		if (!datetimeStr) return 'Invalid time';
-		let dt = DateTime.fromISO(datetimeStr, { zone: timeZone });
-		return dt.toFormat('h:mm a ZZZZ'); // Example: "5:00 PM PST"
+	async function handleMatchRequest(requestId, action) {
+		try {
+			await API.post(`/matchmaking/request/${requestId}/action/`, {
+				action: action
+			});
+
+			if (action === 'accept') {
+				showNotification({
+					type: 'success',
+					message: 'Match accepted! Starting session...'
+				});
+
+				// Load the created event and enter the room
+				loadMatchmakingRequests();
+				// The backend should have created an event for the match
+				// We'll need to fetch it and enter the room
+				setTimeout(() => {
+					loadAndEnterMatch(requestId);
+				}, 1000);
+			} else {
+				showNotification({
+					type: 'info',
+					message: 'Match request declined'
+				});
+			}
+
+			loadMatchmakingRequests();
+		} catch (error) {
+			showNotification({
+				type: 'error',
+				message: error.message || 'Failed to handle match request'
+			});
+		}
 	}
 
-	// Function to format duration
-	function formatDuration(duration) {
-		return duration === '00:00:30' ? '30 min' : `${duration} min`;
+	async function loadAndEnterMatch(requestId) {
+		try {
+			// Find the accepted request and get the session info
+			const request = matchmakingRequests.received_requests.find((r) => r.id === requestId);
+			if (request && request.session_id) {
+				// The session_id should contain the event ID for the match
+				const eventResponse = await API.get(`/events/${request.session_id}/`);
+				socialViewTab.set('chatroom');
+				socialRoom.set(eventResponse);
+			}
+		} catch (error) {
+			console.error('Failed to load match event:', error);
+		}
 	}
 
-	function enterSlot(event) {
-		socialViewTab.set('chatroom');
-		socialRoom.set(event);
+	function showNotification(data) {
+		notification = data;
+		setTimeout(() => {
+			notification = null;
+		}, 3000);
+	}
+
+	function toggleAvailability() {
+		isAvailable = !isAvailable;
+		updateOnlineStatus(true, isAvailable);
+	}
+
+	function getStatusColor(online, available) {
+		if (!online) return 'text-muted';
+		if (available) return 'text-success';
+		return 'text-warning';
+	}
+
+	function getStatusText(online, available) {
+		if (!online) return 'Offline';
+		if (available) return 'Available for Match';
+		return 'Busy';
+	}
+
+	function formatLastSeen(lastSeenStr) {
+		if (!lastSeenStr) return 'Unknown';
+
+		const lastSeen = new Date(lastSeenStr);
+		const now = new Date();
+		const diffMinutes = Math.floor((now - lastSeen) / 60000);
+
+		if (diffMinutes < 1) return 'Just now';
+		if (diffMinutes < 60) return `${diffMinutes}m ago`;
+		if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+		return `${Math.floor(diffMinutes / 1440)}d ago`;
 	}
 </script>
 
 <div class="container mt-4">
-	<h2 class="text-center">📅 Testing Slots</h2>
+	<h2 class="text-center">⚔️ PVP Matchmaking</h2>
 
-	<!-- Accordion -->
-	<div class="accordion" id="slotAccordion">
-		<div class="accordion-item">
-			<h2 class="accordion-header">
-				<button
-					class="accordion-button {formExpanded ? '' : 'collapsed'}"
-					type="button"
-					on:click={() => (formExpanded = !formExpanded)}
-				>
-					{isEditing ? 'Edit Slot' : 'Create a Slot'}
-				</button>
-			</h2>
-			<div class="accordion-collapse collapse {formExpanded ? 'show' : ''}">
-				<div class="accordion-body">
-					<div class="card shadow-sm p-4">
-						<div class="row">
-							<div class="col-md-6">
-								<label class="form-label">I'll be reciting...</label>
-								<input
-									type="text"
-									class="form-control"
-									placeholder="Ex. Surah Isra, First quarter of Baqarah, etc."
-									bind:value={newSlot.title}
-									required
-								/>
-							</div>
-							<div class="col-md-6">
-								<label class="form-label">Time Zone</label>
-								<select class="form-select" bind:value={newSlot.time_zone}>
-									{#each timeZones as zone}
-										<option value={zone}>{zone}</option>
-									{/each}
-								</select>
-							</div>
-						</div>
-
-						<div class="row mt-3">
-							<div class="col-md-4">
-								<label class="form-label">Date</label>
-								<input
-									type="date"
-									class="form-control"
-									bind:value={newSlot.date}
-									min={minDate}
-									required
-								/>
-							</div>
-							<div class="col-md-2">
-								<label class="form-label">Hour</label>
-								<select class="form-select" bind:value={selectedHour}>
-									{#each hourOptions as hour}
-										<option value={hour}>{hour}</option>
-									{/each}
-								</select>
-							</div>
-							<div class="col-md-2">
-								<label class="form-label">Minute</label>
-								<select class="form-select" bind:value={selectedMinute}>
-									{#each timeIntervals as interval}
-										<option value={interval}>{interval}</option>
-									{/each}
-								</select>
-							</div>
-							<div class="col-md-2">
-								<label class="form-label">AM/PM</label>
-								<select class="form-select" bind:value={selectedAmPm}>
-									{#each amPmOptions as amPm}
-										<option value={amPm}>{amPm}</option>
-									{/each}
-								</select>
-							</div>
-						</div>
-
-						<div class="mt-4 d-flex justify-content-between">
-							<button class="btn btn-success" on:click={createOrUpdateSlot}>
-								{isEditing ? 'Update Slot' : 'Create Slot'}
-							</button>
-							<button class="btn btn-secondary" on:click={resetForm}>Cancel</button>
-						</div>
-					</div>
+	<!-- Connection Status -->
+	<div class="row mb-4">
+		<div class="col-12">
+			<div class="d-flex justify-content-between align-items-center">
+				<div class="d-flex align-items-center gap-3">
+					<span class="badge bg-{connectionStatus === 'connected' ? 'success' : 'danger'}">
+						{connectionStatus === 'connected' ? '🟢 Online' : '🔴 Offline'}
+					</span>
+					<button
+						class="btn btn-sm {isAvailable ? 'btn-success' : 'btn-warning'}"
+						on:click={toggleAvailability}
+					>
+						{isAvailable ? '🟢 Available' : '🟡 Busy'}
+					</button>
 				</div>
+				<small class="text-muted">
+					{onlineFriends.length} friend{onlineFriends.length !== 1 ? 's' : ''} online
+				</small>
 			</div>
 		</div>
 	</div>
 
-	<!-- Slot List -->
-	<div class="mt-5">
-		<h4 class="text-center">🎉 Your Slots</h4>
-		{#if my_events.length < 1}
-			<div class="msg">
-				You don't have any events coming up. Use the "Create a Slot" button above to open something
-				up.
-			</div>
-		{:else}
-			<ul class="list-group mt-3">
-				{#each my_events as event}
-					<li class="list-group-item d-flex justify-content-between align-items-center">
-						<div>
-							<strong>{formatDateTime(event.datetime_local, event.time_zone)}</strong> for {formatDuration(
-								event.duration
-							)}, {event.title}
+	<!-- Notification -->
+	{#if notification}
+		<div
+			class="alert alert-{notification.type === 'success'
+				? 'success'
+				: notification.type === 'error'
+				? 'danger'
+				: 'info'} alert-dismissible fade show"
+			role="alert"
+		>
+			{notification.message}
+			<button type="button" class="btn-close" on:click={() => (notification = null)} />
+		</div>
+	{/if}
+
+	<!-- Online Friends Section -->
+	<div class="row mb-5">
+		<div class="col-12">
+			<h4 class="text-center mb-3">🟢 Online Friends</h4>
+			{#if onlineFriends.length === 0}
+				<div class="text-center text-muted py-4">
+					<p>No friends are currently online and available for matching.</p>
+					<p class="small">Ask your friends to come online to start a PVP session!</p>
+				</div>
+			{:else}
+				<div class="row">
+					{#each onlineFriends as friend}
+						<div class="col-md-6 col-lg-4 mb-3">
+							<div class="card">
+								<div class="card-body">
+									<div class="d-flex justify-content-between align-items-start">
+										<div>
+											<h6 class="card-title mb-1">
+												{friend.first_name}
+												{friend.last_name}
+											</h6>
+											<small
+												class={getStatusColor(friend.is_online, friend.is_available_for_match)}
+											>
+												{getStatusText(friend.is_online, friend.is_available_for_match)}
+											</small>
+										</div>
+										<div class="text-end">
+											<small class="text-muted d-block">
+												{formatLastSeen(friend.last_seen)}
+											</small>
+										</div>
+									</div>
+									{#if friend.is_available_for_match}
+										<button
+											class="btn btn-primary btn-sm mt-2 w-100"
+											on:click={() => requestMatch(friend.id)}
+										>
+											⚔️ Challenge to Match
+										</button>
+									{/if}
+								</div>
+							</div>
 						</div>
-						<div>
-							<button class="btn btn-info btn-sm me-2" on:click={() => enterSlot(event)}
-								>Enter</button
-							>
-							<button class="btn btn-warning btn-sm me-2" on:click={() => editSlot(event)}
-								>Edit</button
-							>
-							<button class="btn btn-danger btn-sm" on:click={() => deleteSlot(event.id)}
-								>Delete</button
-							>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		{/if}
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 
-	<div class="mt-5">
-		<h4 class="text-center">🎉 Friend's Slots</h4>
-		<ul class="list-group mt-3">
-			{#each friends_events as event}
-				<li class="list-group-item d-flex justify-content-between align-items-center">
-					<div>
-						<strong>{formatDateTime(event.datetime_local, event.time_zone)}</strong> for {formatDuration(
-							event.duration
-						)}, {event.title}
-					</div>
-					<div>
-						<button class="btn btn-info btn-sm me-2" on:click={() => enterSlot(event)}>Enter</button
-						>
-					</div>
-				</li>
-			{/each}
-		</ul>
-	</div>
+	<!-- Matchmaking Requests -->
+	{#if matchmakingRequests.received_requests.length > 0}
+		<div class="row mb-4">
+			<div class="col-12">
+				<h5>📨 Incoming Requests</h5>
+				<div class="list-group">
+					{#each matchmakingRequests.received_requests.filter((r) => r.status === 'pending') as request}
+						<div class="list-group-item d-flex justify-content-between align-items-center">
+							<div>
+								<strong>{request.requester_name}</strong> wants to match with you
+								<br />
+								<small class="text-muted">
+									{new Date(request.created_at).toLocaleTimeString()}
+								</small>
+							</div>
+							<div class="btn-group">
+								<button
+									class="btn btn-success btn-sm"
+									on:click={() => handleMatchRequest(request.id, 'accept')}
+								>
+									✅ Accept
+								</button>
+								<button
+									class="btn btn-outline-danger btn-sm"
+									on:click={() => handleMatchRequest(request.id, 'decline')}
+								>
+									❌ Decline
+								</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Sent Requests -->
+	{#if matchmakingRequests.sent_requests.length > 0}
+		<div class="row">
+			<div class="col-12">
+				<h5>📤 Sent Requests</h5>
+				<div class="list-group">
+					{#each matchmakingRequests.sent_requests.filter((r) => r.status === 'pending') as request}
+						<div class="list-group-item d-flex justify-content-between align-items-center">
+							<div>
+								Waiting for <strong>{request.target_user_name}</strong> to respond
+								<br />
+								<small class="text-muted">
+									{new Date(request.created_at).toLocaleTimeString()}
+								</small>
+							</div>
+							<span class="badge bg-warning">Pending</span>
+						</div>
+					{/each}
+
+					{#each matchmakingRequests.sent_requests.filter((r) => r.status === 'accepted') as request}
+						<div class="list-group-item d-flex justify-content-between align-items-center">
+							<div>
+								<strong>{request.target_user_name}</strong> accepted your challenge!
+								<br />
+								<small class="text-muted">
+									{new Date(request.created_at).toLocaleTimeString()}
+								</small>
+							</div>
+							<button class="btn btn-success btn-sm" on:click={() => loadAndEnterMatch(request.id)}>
+								🚀 Enter Match
+							</button>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	.card {
+		border: none;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		transition: transform 0.2s;
+	}
+
+	.card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+	}
+
+	.btn-primary {
+		background: linear-gradient(45deg, #007bff, #0056b3);
+		border: none;
+	}
+
+	.btn-success {
+		background: linear-gradient(45deg, #28a745, #1e7e34);
+		border: none;
+	}
+</style>

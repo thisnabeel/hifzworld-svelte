@@ -35,14 +35,19 @@
 	// $: console.log($user);
 
 	async function grantAccess(email) {
-		const res = await API.post('/user_grants/', {
-			granter_email: $user.email,
-			grantee_email: email,
-			access_type: 'full'
-		});
+		try {
+			const res = await API.post('/user_grants/', {
+				granter_email: $user.email,
+				grantee_email: email,
+				access_type: 'granter' // Fixed: use valid access_type
+			});
 
-		user.set({ ...$user, granted_permsissions: [...($user.granted_permissions || []), res] });
-		getList();
+			user.set({ ...$user, granted_permissions: [...($user.granted_permissions || []), res] });
+			getList();
+		} catch (error) {
+			console.error('Error granting access:', error);
+			// Handle error appropriately - maybe show a notification
+		}
 	}
 
 	const searchByEmail = debounce(async () => {

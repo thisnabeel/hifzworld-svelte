@@ -12,7 +12,7 @@
 			class={$socialViewTab === 'events' ? 'active' : ''}
 			on:click={() => socialViewTab.set('events')}
 		>
-			<i class="fa fa-calendar" /> Events</button
+			<i class="fa fa-gamepad" /> PVP Match</button
 		>
 		<button
 			class:hidden={$socialViewTab !== 'chatroom'}
