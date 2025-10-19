@@ -18,6 +18,9 @@
 	let debugLogs = [];
 	let isDebugOpen = false;
 	let isNegotiating = false;
+	let reconnectAttempts = 0;
+	const maxReconnectAttempts = 5;
+	let reconnectTimeout;
 
 	function addDebugLog(message) {
 		const timestamp = new Date().toISOString();
@@ -30,28 +33,38 @@
 	$: {
 		if (event && event.unique_code) {
 			const wsUrl = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-			const baseURL = import.meta.env.PROD
-				? import.meta.env.VITE_API_URL
-				: import.meta.env.VITE_API_URL;
+			const baseURL = import.meta.env.VITE_API_URL;
 
-			// Extract hostname from URL more robustly
+			// More robust URL parsing for production
 			let hostname;
 			try {
 				const url = new URL(baseURL);
-				hostname = url.hostname + (url.port ? `:${url.port}` : '');
+				hostname = url.hostname;
+				// Only add port if it's not the default port for the protocol
+				if (
+					url.port &&
+					!(
+						(url.protocol === 'https:' && url.port === '443') ||
+						(url.protocol === 'http:' && url.port === '80')
+					)
+				) {
+					hostname += `:${url.port}`;
+				}
 			} catch (e) {
-				// Fallback to old parsing if URL constructor fails
-				hostname = baseURL.split('//')[1].split('/')[0];
+				console.error('Failed to parse baseURL:', baseURL, e);
+				// Fallback for production
+				if (baseURL.includes('hifzworld.onrender.com')) {
+					hostname = 'hifzworld.onrender.com';
+				} else {
+					hostname = baseURL.split('//')[1]?.split('/')[0] || 'localhost:8000';
+				}
 			}
 
 			signalingServer = `${wsUrl}${hostname}/ws/signaling/${event.unique_code}/`;
-			console.log('VideoChat - Event data:', event);
-			console.log('VideoChat - Signaling server:', signalingServer);
+			addDebugLog(`Building signaling server URL: ${signalingServer}`);
+			addDebugLog(`Base URL: ${baseURL}, Hostname: ${hostname}`);
 		} else {
-			console.warn('VideoChat - Event or unique_code not available:', {
-				event,
-				unique_code: event?.unique_code
-			});
+			addDebugLog('Event or unique_code not available for signaling server');
 		}
 	}
 
@@ -70,8 +83,12 @@
 			const configuration = {
 				iceServers: [
 					{ urls: 'stun:stun.l.google.com:19302' },
-					{ urls: 'stun:stun1.l.google.com:19302' }
-				]
+					{ urls: 'stun:stun1.l.google.com:19302' },
+					{ urls: 'stun:stun2.l.google.com:19302' },
+					{ urls: 'stun:stun3.l.google.com:19302' },
+					{ urls: 'stun:stun4.l.google.com:19302' }
+				],
+				iceCandidatePoolSize: 10
 			};
 
 			peerConnection = new RTCPeerConnection(configuration);
@@ -143,12 +160,21 @@
 		}
 
 		try {
-			addDebugLog(`Connecting to signaling server: ${signalingServer}`);
+			addDebugLog(
+				`Connecting to signaling server: ${signalingServer} (Attempt ${reconnectAttempts + 1})`
+			);
+
+			// Close existing connection if any
+			if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+				websocket.close();
+			}
+
 			websocket = new WebSocket(signalingServer);
 
 			websocket.onopen = () => {
-				addDebugLog('WebSocket connected');
+				addDebugLog('WebSocket connected successfully');
 				addDebugLog(`Connected to room: ${event.unique_code}`);
+				reconnectAttempts = 0; // Reset on successful connection
 				websocket.send(JSON.stringify({ type: 'check-room' }));
 			};
 
@@ -249,7 +275,7 @@
 			};
 
 			websocket.onerror = (error) => {
-				addDebugLog(`WebSocket error: ${error.message}`);
+				addDebugLog(`WebSocket error: ${error.message || 'Connection error occurred'}`);
 				console.error('WebSocket error:', error);
 			};
 
@@ -258,6 +284,19 @@
 				isConnected = false;
 				if (remoteVideo) {
 					remoteVideo.srcObject = null;
+				}
+
+				// Attempt reconnection for unexpected closures
+				if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+					const delay = Math.pow(2, reconnectAttempts) * 1000; // Exponential backoff
+					addDebugLog(`Attempting reconnection in ${delay / 1000} seconds...`);
+
+					reconnectTimeout = setTimeout(() => {
+						reconnectAttempts++;
+						connectToSignalingServer();
+					}, delay);
+				} else if (reconnectAttempts >= maxReconnectAttempts) {
+					addDebugLog('Max reconnection attempts reached. Please refresh the page.');
 				}
 			};
 		} catch (error) {
@@ -303,6 +342,9 @@
 	}
 
 	onDestroy(() => {
+		if (reconnectTimeout) {
+			clearTimeout(reconnectTimeout);
+		}
 		if (localStream) {
 			localStream.getTracks().forEach((track) => track.stop());
 		}
@@ -310,7 +352,7 @@
 			peerConnection.close();
 		}
 		if (websocket) {
-			websocket.close();
+			websocket.close(1000, 'Component unmounting');
 		}
 	});
 </script>
